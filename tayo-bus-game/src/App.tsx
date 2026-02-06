@@ -22,6 +22,7 @@ function App() {
   const difficulty = useGameStore((state) => state.difficulty)
   const unlockedLevels = useGameStore((state) => state.unlockedLevels)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const isGameplay = gameState === 'playing' || gameState === 'crashing'
   const unlockedCount = Math.min(unlockedLevels, levels.length)
   const stateLabel =
     gameState === 'menu'
@@ -30,6 +31,8 @@ function App() {
         ? 'Level Select'
         : gameState === 'playing'
           ? 'In Run'
+          : gameState === 'crashing'
+            ? 'Crash'
           : gameState === 'victory'
             ? 'Victory'
             : 'Game Over'
@@ -59,7 +62,7 @@ function App() {
     if (gameState === 'victory') {
       playVictory()
     }
-    if (gameState === 'gameOver') {
+    if (gameState === 'crashing') {
       playCrash()
     }
   }, [audioEnabled, gameState])
@@ -70,40 +73,86 @@ function App() {
         <div className="absolute -left-16 top-8 h-48 w-48 rounded-full bg-orange-200/60 blur-3xl" />
         <div className="absolute right-0 top-24 h-56 w-56 rounded-full bg-sky-200/50 blur-3xl" />
       </div>
-      <div className="mx-auto max-w-6xl space-y-8">
-        <header className="flex flex-wrap items-center justify-between gap-4">
+      <div className={`mx-auto max-w-6xl ${isGameplay ? 'space-y-5' : 'space-y-8'}`}>
+        <header
+          className={`flex flex-wrap items-center justify-between gap-4 ${
+            isGameplay
+              ? 'rounded-3xl border border-slate-200 bg-white/78 px-4 py-3 backdrop-blur'
+              : ''
+          }`}
+        >
           <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-400">
-              Tayo Bus Arcade
+            <p
+              className={`text-xs font-semibold uppercase ${
+                isGameplay
+                  ? 'tracking-[0.3em] text-slate-500'
+                  : 'tracking-[0.4em] text-slate-400'
+              }`}
+            >
+              {isGameplay ? 'Driver Console' : 'Tayo Bus Arcade'}
             </p>
-            <h1 className="text-3xl font-extrabold text-slate-900 sm:text-4xl">
-              Road Dash
+            <h1
+              className={`font-extrabold text-slate-900 ${
+                isGameplay ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'
+              }`}
+            >
+              {isGameplay ? 'Bus Operations' : 'Road Dash'}
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className={`flex items-center ${isGameplay ? 'gap-2' : 'gap-3'}`}>
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
-              className="rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 shadow transition hover:border-slate-400"
+              className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] shadow transition ${
+                isGameplay
+                  ? 'border-slate-300 bg-slate-100 text-slate-700 hover:border-slate-400'
+                  : 'border-slate-300 bg-white/80 text-slate-600 hover:border-slate-400'
+              }`}
             >
               Settings
             </button>
-            <div className="rounded-full border border-white/80 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600 shadow">
+            <div
+              className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] shadow ${
+                isGameplay
+                  ? 'border-slate-300 bg-slate-100 text-slate-700'
+                  : 'border-white/80 bg-white/80 text-slate-600'
+              }`}
+            >
               {stateLabel}
             </div>
-            <div className="rounded-full border border-white/80 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600 shadow">
+            <div
+              className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] shadow ${
+                isGameplay
+                  ? 'hidden border-slate-300 bg-slate-100 text-slate-700 sm:block'
+                  : 'border-white/80 bg-white/80 text-slate-600'
+              }`}
+            >
               Levels {unlockedCount}/{levels.length}
             </div>
-            <div className="rounded-full border border-white/80 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600 shadow">
+            <div
+              className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] shadow ${
+                isGameplay
+                  ? 'hidden border-slate-300 bg-slate-100 text-slate-700 md:block'
+                  : 'border-white/80 bg-white/80 text-slate-600'
+              }`}
+            >
               {difficulty}
             </div>
           </div>
         </header>
 
-        <main className="relative rounded-[2rem] border border-white/60 bg-white/65 p-5 shadow-2xl backdrop-blur sm:rounded-[2.5rem] sm:p-10">
+        <main
+          className={`relative rounded-[2rem] border shadow-2xl backdrop-blur sm:rounded-[2.5rem] ${
+            isGameplay
+              ? 'border-slate-200/80 bg-white/72 p-4 sm:p-6'
+              : 'border-white/60 bg-white/65 p-5 sm:p-10'
+          }`}
+        >
           {gameState === 'menu' && <CharacterSelection />}
           {gameState === 'levelSelect' && <LevelSelect />}
-          {gameState === 'playing' && <GameScreen />}
+          {(gameState === 'playing' || gameState === 'crashing') && (
+            <GameScreen />
+          )}
           {gameState === 'victory' && <VictoryScreen />}
           {gameState === 'gameOver' && <GameOverScreen />}
         </main>
