@@ -2,7 +2,13 @@ import { create } from 'zustand'
 import type { CharacterId } from '../data/characters'
 import { levels, type ObstacleFrequency } from '../data/levels'
 
-export type GameState = 'menu' | 'levelSelect' | 'playing' | 'victory' | 'gameOver'
+export type GameState =
+  | 'menu'
+  | 'levelSelect'
+  | 'playing'
+  | 'crashing'
+  | 'victory'
+  | 'gameOver'
 
 export type Obstacle = {
   id: number
@@ -54,6 +60,9 @@ type GameStore = {
   nextObstacleId: number
   obstaclesAvoided: number
   obstaclesSpawned: number
+  crashTimerMs: number
+  crashLane: 0 | 1 | 2 | null
+  crashY: number | null
   lastRunStats: RunStats
   bestByLevel: Record<number, BestStats>
   setGameState: (state: GameState) => void
@@ -83,6 +92,7 @@ const COLLISION_PROBE_SIZE = 6
 const OBSTACLE_HITBOX = { top: 0.4, bottom: 0.78 }
 const FINISH_LINE_HEIGHT = 48
 const LANES: Array<0 | 1 | 2> = [0, 1, 2]
+const CRASH_DURATION_MS = 600
 
 const OBSTACLE_SIZES: Record<Obstacle['variant'], { height: number }> = {
   motorcycle: { height: 88 },
@@ -91,10 +101,22 @@ const OBSTACLE_SIZES: Record<Obstacle['variant'], { height: number }> = {
   truck: { height: 150 },
 }
 
-const DIFFICULTY_CONFIG: Record<Difficulty, { speed: number; spawn: number }> = {
-  easy: { speed: 0.85, spawn: 1.6 },
-  normal: { speed: 1, spawn: 1.1 },
-  hard: { speed: 1.12, spawn: 0.85 },
+const SPEED_MULTIPLIER_BY_DIFFICULTY: Record<Difficulty, number> = {
+  easy: 0.85,
+  normal: 1,
+  hard: 1.12,
+}
+
+const SPAWN_COOLDOWN_BY_DIFFICULTY: Record<Difficulty, number> = {
+  easy: 2,
+  normal: 1.35,
+  hard: 0.85,
+}
+
+const LANE_CLEAR_THRESHOLD_BY_DIFFICULTY: Record<Difficulty, number> = {
+  easy: 320,
+  normal: 280,
+  hard: 220,
 }
 
 const createRunStats = (overrides: Partial<RunStats> = {}): RunStats => ({
@@ -154,8 +176,14 @@ const getSpawnInterval = (frequency: ObstacleFrequency) => {
   }
 }
 
-const getDifficultyConfig = (difficulty: Difficulty) =>
-  DIFFICULTY_CONFIG[difficulty] ?? DIFFICULTY_CONFIG.normal
+const getDifficultyConfig = (difficulty: Difficulty) => ({
+  speed:
+    SPEED_MULTIPLIER_BY_DIFFICULTY[difficulty] ??
+    SPEED_MULTIPLIER_BY_DIFFICULTY.normal,
+  spawn:
+    SPAWN_COOLDOWN_BY_DIFFICULTY[difficulty] ??
+    SPAWN_COOLDOWN_BY_DIFFICULTY.normal,
+})
 const getSpawnCooldown = (
   frequency: ObstacleFrequency,
   difficulty: Difficulty
@@ -198,6 +226,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   nextObstacleId: 1,
   obstaclesAvoided: 0,
   obstaclesSpawned: 0,
+  crashTimerMs: 0,
+  crashLane: null,
+  crashY: null,
   lastRunStats: createRunStats(),
   bestByLevel: initialBestByLevel,
   setGameState: (state) => set({ gameState: state }),
@@ -278,6 +309,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       nextObstacleId: 1,
       obstaclesAvoided: 0,
       obstaclesSpawned: 0,
+      crashTimerMs: 0,
+      crashLane: null,
+      crashY: null,
       lastRunStats: createRunStats(),
     })
   },
@@ -319,6 +353,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       nextObstacleId: 1,
       obstaclesAvoided: 0,
       obstaclesSpawned: 0,
+      crashTimerMs: 0,
+      crashLane: null,
+      crashY: null,
       lastRunStats: createRunStats(),
     })
   },
@@ -328,11 +365,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) => ({ playerLane: Math.min(2, state.playerLane + 1) as 0 | 1 | 2 })),
   tick: (deltaMs) =>
     set((state) => {
-      if (state.gameState !== 'playing') {
+      if (state.gameState !== 'playing' && state.gameState !== 'crashing') {
         return state
       }
 
-      const deltaSeconds = Math.min(deltaMs, MAX_FRAME_DELTA_MS) / 1000
+      const clampedDeltaMs = Math.min(deltaMs, MAX_FRAME_DELTA_MS)
+      if (state.gameState === 'crashing') {
+        const nextCrashTimer = Math.max(0, state.crashTimerMs - clampedDeltaMs)
+        if (nextCrashTimer <= 0) {
+          return {
+            gameState: 'gameOver',
+            crashTimerMs: 0,
+            crashLane: null,
+            crashY: null,
+          }
+        }
+
+        return {
+          crashTimerMs: nextCrashTimer,
+        }
+      }
+
+      const deltaSeconds = clampedDeltaMs / 1000
       const distanceDelta = state.speed * deltaSeconds
       const distanceTraveled = Math.min(
         state.distanceTraveled + distanceDelta,
@@ -365,7 +419,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           }
         })
         .filter((obstacle) => obstacle.y < 520)
-      const collided = movedObstacles.some((obstacle) => {
+      const collidedObstacle = movedObstacles.find((obstacle) => {
         if (obstacle.lane !== state.playerLane) {
           return false
         }
@@ -376,13 +430,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
         return probeBottom >= obstacleTop && probeTop <= obstacleBottom
       })
 
-      if (collided) {
+      if (collidedObstacle) {
         return {
           ...state,
-          gameState: 'gameOver',
+          gameState: 'crashing',
           obstacles: movedObstacles,
-          distanceTraveled,
-          timeElapsed: state.timeElapsed + deltaSeconds,
+          crashTimerMs: CRASH_DURATION_MS,
+          crashLane: collidedObstacle.lane,
+          crashY: collidedObstacle.y,
           obstaclesAvoided: state.obstaclesAvoided + newlyAvoided,
         }
       }
@@ -462,13 +517,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
         state.obstacleFrequency,
         state.difficulty
       )
+      const laneClearThreshold =
+        LANE_CLEAR_THRESHOLD_BY_DIFFICULTY[state.difficulty] ??
+        LANE_CLEAR_THRESHOLD_BY_DIFFICULTY.hard
 
       const canSpawn = progressRemaining > FINISH_BUFFER
       if (canSpawn) {
         let spawnPasses = 0
         while (spawnTimer <= 0 && spawnPasses < 2) {
           spawnPasses += 1
-          const recentObstacles = obstacles.filter((obstacle) => obstacle.y < 220)
+          const recentObstacles = obstacles.filter(
+            (obstacle) => obstacle.y < laneClearThreshold
+          )
           const occupiedLanes = new Set(recentObstacles.map((obstacle) => obstacle.lane))
           const availableLanes = LANES.filter((lane) => !occupiedLanes.has(lane))
 
