@@ -1,0 +1,142 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Fredoka:wght@400;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Fredoka', 'Baloo 2', 'Trebuchet MS', sans-serif;
+  color: #1f2937;
+  background-color: #f9f3e8;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #fff7e1 0%, #f9f3e8 45%, #f0e7d5 100%);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 420ms ease-out;
+}
+
+@keyframes lane-dash-flow {
+  0% {
+    background-position-y: 0;
+  }
+  100% {
+    background-position-y: 36px;
+  }
+}
+
+.lane-dash-flow {
+  animation: lane-dash-flow 360ms linear infinite;
+}
+
+@keyframes lane-bump {
+  0% {
+    transform: scale(0.95);
+  }
+  55% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.lane-bump {
+  animation: lane-bump 220ms ease-out;
+}
+
+@keyframes sparkle {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+.sparkle {
+  position: absolute;
+  border-radius: 999px;
+  animation: sparkle 1.4s ease-in-out infinite;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-10%) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(120%) rotate(220deg);
+    opacity: 0;
+  }
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -12%;
+  border-radius: 3px;
+  animation: confetti-fall 1.8s linear infinite;
+}
+
+@keyframes crash-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+.crash-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 3px solid rgba(244, 63, 94, 0.6);
+  animation: crash-ring 900ms ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .lane-dash-flow,
+  .lane-bump,
+  .sparkle,
+  .confetti-piece,
+  .crash-ring {
+    animation: none !important;
+  }
+}
