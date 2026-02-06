@@ -383,6 +383,87 @@ body {
     drop-shadow(0 8px 10px rgba(15, 23, 42, 0.24));
 }
 
+.obstacle-vehicle {
+  will-change: transform, filter;
+}
+
+.obstacle-bus {
+  filter: drop-shadow(0 2px 0 rgba(15, 23, 42, 0.22))
+    drop-shadow(0 9px 12px rgba(15, 23, 42, 0.28));
+}
+
+.obstacle-car {
+  filter: drop-shadow(0 2px 0 rgba(15, 23, 42, 0.2))
+    drop-shadow(0 8px 11px rgba(15, 23, 42, 0.24));
+}
+
+.obstacle-motorcycle {
+  transform-origin: 50% 78%;
+  animation: motorcycle-wobble 820ms ease-in-out infinite;
+  filter: drop-shadow(0 2px 0 rgba(15, 23, 42, 0.2))
+    drop-shadow(0 7px 10px rgba(15, 23, 42, 0.22));
+}
+
+.player-bus-glow {
+  animation: player-engine-glow 1.3s ease-in-out infinite;
+}
+
+.player-headlight-glint {
+  position: absolute;
+  top: 6px;
+  width: 10px;
+  height: 22px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.84) 0%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  opacity: 0.45;
+  mix-blend-mode: screen;
+  animation: headlight-glint 1.5s ease-in-out infinite;
+}
+
+.player-headlight-glint-left {
+  left: 17px;
+}
+
+.player-headlight-glint-right {
+  right: 17px;
+  animation-delay: 180ms;
+}
+
+@keyframes motorcycle-wobble {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+@keyframes player-engine-glow {
+  0%,
+  100% {
+    filter: saturate(1) brightness(1);
+  }
+  50% {
+    filter: saturate(1.08) brightness(1.03);
+  }
+}
+
+@keyframes headlight-glint {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
 @keyframes crash-flash {
   0% {
     opacity: 0;
@@ -552,7 +633,10 @@ body {
   .confetti-piece,
   .crash-ring,
   .bus-lamp-on,
-  .bus-warning-live {
+  .bus-warning-live,
+  .obstacle-motorcycle,
+  .player-bus-glow,
+  .player-headlight-glint {
     animation: none !important;
   }
 }

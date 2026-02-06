@@ -1,11 +1,10 @@
 import type { TouchEvent } from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { playLaneChange } from '../audio/audioEngine'
 import busObstacle from '../assets/obstacles/bus.svg'
 import carObstacle from '../assets/obstacles/car.svg'
 import motorcycleObstacle from '../assets/obstacles/motorcycle.svg'
-import truckObstacle from '../assets/obstacles/truck.svg'
 import { characters } from '../data/characters'
 import { levels } from '../data/levels'
 import { useGameStore } from '../store/gameStore'
@@ -95,10 +94,9 @@ const GameScreen = () => {
 
   const obstaclePalette = useMemo(
     () => ({
-      motorcycle: { width: 34, height: 88, src: motorcycleObstacle },
-      car: { width: 50, height: 110, src: carObstacle },
-      bus: { width: 60, height: 140, src: busObstacle },
-      truck: { width: 64, height: 150, src: truckObstacle },
+      motorcycle: { width: 40, height: 90, src: motorcycleObstacle },
+      car: { width: 56, height: 112, src: carObstacle },
+      bus: { width: 66, height: 144, src: busObstacle },
     }),
     []
   )
@@ -107,9 +105,41 @@ const GameScreen = () => {
   const busShadow = '0 12px 20px rgba(15, 23, 42, 0.28)'
   const isCrashing = gameState === 'crashing'
   const raceActive = gameState === 'playing' || isCrashing
+  const visibleTurnSignal = gameState === 'playing' ? turnSignal : null
   const crashFocusLane = crashLane ?? playerLane
   const crashFocusY =
     crashY === null ? 248 : Math.max(60, Math.min(334, crashY + 62))
+
+  const flashTurnSignal = useCallback((direction: 'left' | 'right') => {
+    setTurnSignal(direction)
+    if (signalTimerRef.current !== null) {
+      window.clearTimeout(signalTimerRef.current)
+    }
+    signalTimerRef.current = window.setTimeout(() => {
+      setTurnSignal(null)
+      signalTimerRef.current = null
+    }, 420)
+  }, [])
+
+  const handleMoveLeft = useCallback(() => {
+    if (gameState !== 'playing') {
+      return
+    }
+    if (playerLane > 0) {
+      flashTurnSignal('left')
+    }
+    moveLeft()
+  }, [flashTurnSignal, gameState, moveLeft, playerLane])
+
+  const handleMoveRight = useCallback(() => {
+    if (gameState !== 'playing') {
+      return
+    }
+    if (playerLane < 2) {
+      flashTurnSignal('right')
+    }
+    moveRight()
+  }, [flashTurnSignal, gameState, moveRight, playerLane])
 
   useEffect(() => {
     return () => {
@@ -123,11 +153,6 @@ const GameScreen = () => {
     if (gameState !== 'playing') {
       laneSoundReady.current = false
       previousLane.current = null
-      setTurnSignal(null)
-      if (signalTimerRef.current !== null) {
-        window.clearTimeout(signalTimerRef.current)
-        signalTimerRef.current = null
-      }
       return
     }
 
@@ -141,18 +166,6 @@ const GameScreen = () => {
       if (audioEnabled) {
         playLaneChange()
       }
-
-      const direction =
-        playerLane > (previousLane.current ?? playerLane) ? 'right' : 'left'
-      setTurnSignal(direction)
-
-      if (signalTimerRef.current !== null) {
-        window.clearTimeout(signalTimerRef.current)
-      }
-      signalTimerRef.current = window.setTimeout(() => {
-        setTurnSignal(null)
-        signalTimerRef.current = null
-      }, 420)
     }
 
     previousLane.current = playerLane
@@ -190,17 +203,17 @@ const GameScreen = () => {
 
       if (event.key === 'ArrowLeft') {
         event.preventDefault()
-        moveLeft()
+        handleMoveLeft()
       }
       if (event.key === 'ArrowRight') {
         event.preventDefault()
-        moveRight()
+        handleMoveRight()
       }
     }
 
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [gameState, moveLeft, moveRight])
+  }, [gameState, handleMoveLeft, handleMoveRight])
 
   const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
     if (gameState !== 'playing') {
@@ -230,9 +243,9 @@ const GameScreen = () => {
 
     if (isSwipe) {
       if (deltaX > 0) {
-        moveRight()
+        handleMoveRight()
       } else {
-        moveLeft()
+        handleMoveLeft()
       }
       return
     }
@@ -247,9 +260,9 @@ const GameScreen = () => {
       const rawLane = Math.floor((relativeX / bounds.width) * 3)
       const tappedLane = Math.max(0, Math.min(2, rawLane)) as 0 | 1 | 2
       if (tappedLane < playerLane) {
-        moveLeft()
+        handleMoveLeft()
       } else if (tappedLane > playerLane) {
-        moveRight()
+        handleMoveRight()
       }
     }
   }
@@ -371,11 +384,9 @@ const GameScreen = () => {
             {obstacles.map((obstacle) => {
               const style = obstaclePalette[obstacle.variant]
               return (
-                <img
+                <div
                   key={obstacle.id}
-                  src={style.src}
-                  alt={obstacle.variant}
-                  className="obstacle-2d absolute"
+                  className="absolute"
                   style={{
                     left: lanePositions[obstacle.lane],
                     top: obstacle.y,
@@ -383,8 +394,14 @@ const GameScreen = () => {
                     height: style.height,
                     transform: 'translateX(-50%)',
                   }}
-                  draggable={false}
-                />
+                >
+                  <img
+                    src={style.src}
+                    alt={obstacle.variant}
+                    className={`obstacle-2d obstacle-vehicle obstacle-${obstacle.variant} h-full w-full`}
+                    draggable={false}
+                  />
+                </div>
               )
             })}
 
@@ -419,7 +436,7 @@ const GameScreen = () => {
 
             <div
               key={`player-${playerLane}`}
-              className="absolute bottom-8 transition-[left,transform,box-shadow] duration-200 ease-out"
+              className="player-bus-glow absolute bottom-8 transition-[left,transform,box-shadow] duration-200 ease-out"
               style={{
                 left: lanePositions[playerLane],
                 width: 68,
@@ -436,6 +453,8 @@ const GameScreen = () => {
                 }`}
                 draggable={false}
               />
+              <span className="player-headlight-glint player-headlight-glint-left" />
+              <span className="player-headlight-glint player-headlight-glint-right" />
               <span
                 className="sparkle left-2 top-6 h-2 w-2 bg-white/80"
                 style={{ animationDelay: '0ms' }}
@@ -493,13 +512,21 @@ const GameScreen = () => {
 
         <div className="bus-control-panel">
           <div className="bus-signal-row" role="presentation">
-            <span className={`bus-lamp ${turnSignal === 'left' ? 'bus-lamp-on' : ''}`}>
+            <span
+              className={`bus-lamp ${
+                visibleTurnSignal === 'left' ? 'bus-lamp-on' : ''
+              }`}
+            >
               ◀
             </span>
             <span className={`bus-lamp ${isCrashing ? 'bus-lamp-warning' : ''}`}>
               !
             </span>
-            <span className={`bus-lamp ${turnSignal === 'right' ? 'bus-lamp-on' : ''}`}>
+            <span
+              className={`bus-lamp ${
+                visibleTurnSignal === 'right' ? 'bus-lamp-on' : ''
+              }`}
+            >
               ▶
             </span>
           </div>
@@ -516,7 +543,7 @@ const GameScreen = () => {
           <div className="grid w-full grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={moveLeft}
+              onClick={handleMoveLeft}
               disabled={isCrashing}
               className="bus-drive-button"
             >
@@ -525,7 +552,7 @@ const GameScreen = () => {
             </button>
             <button
               type="button"
-              onClick={moveRight}
+              onClick={handleMoveRight}
               disabled={isCrashing}
               className="bus-drive-button"
             >

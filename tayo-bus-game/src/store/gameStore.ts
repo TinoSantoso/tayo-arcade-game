@@ -14,7 +14,7 @@ export type Obstacle = {
   id: number
   lane: 0 | 1 | 2
   y: number
-  variant: 'motorcycle' | 'car' | 'bus' | 'truck'
+  variant: 'motorcycle' | 'car' | 'bus'
 }
 
 export type Difficulty = 'easy' | 'normal' | 'hard'
@@ -98,7 +98,6 @@ const OBSTACLE_SIZES: Record<Obstacle['variant'], { height: number }> = {
   motorcycle: { height: 88 },
   car: { height: 110 },
   bus: { height: 140 },
-  truck: { height: 150 },
 }
 
 const SPEED_MULTIPLIER_BY_DIFFICULTY: Record<Difficulty, number> = {
@@ -539,7 +538,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
               'motorcycle',
               'car',
               'bus',
-              'truck',
             ]
             const variant = variants[Math.floor(Math.random() * variants.length)]
 

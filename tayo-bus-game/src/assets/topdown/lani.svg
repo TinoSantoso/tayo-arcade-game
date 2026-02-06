@@ -1,10 +1,25 @@
 <svg width="160" height="260" viewBox="0 0 160 260" xmlns="http://www.w3.org/2000/svg">
-  <rect x="20" y="8" width="120" height="244" rx="28" fill="#fbbf24"/>
-  <rect x="34" y="22" width="92" height="96" rx="16" fill="#0f172a" opacity="0.18"/>
-  <rect x="34" y="126" width="92" height="84" rx="14" fill="#1f2937" opacity="0.18"/>
-  <rect x="30" y="214" width="100" height="28" rx="14" fill="#0f172a" opacity="0.2"/>
-  <rect x="48" y="14" width="64" height="10" rx="5" fill="#b45309"/>
-  <rect x="44" y="226" width="16" height="8" rx="4" fill="#fef3c7"/>
-  <rect x="100" y="226" width="16" height="8" rx="4" fill="#fef3c7"/>
-  <rect x="70" y="232" width="20" height="6" rx="3" fill="#111827" opacity="0.35"/>
+  <defs>
+    <linearGradient id="laniBody" x1="80" y1="8" x2="80" y2="252" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd966"/>
+      <stop offset="1" stop-color="#f4b423"/>
+    </linearGradient>
+    <linearGradient id="laniGlass" x1="80" y1="34" x2="80" y2="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e6f4ff"/>
+      <stop offset="1" stop-color="#8ed1ff"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="80" cy="238" rx="44" ry="14" fill="#0f172a" opacity="0.18"/>
+  <rect x="22" y="10" width="116" height="238" rx="30" fill="url(#laniBody)" stroke="#b45309" stroke-width="4"/>
+  <rect x="45" y="16" width="70" height="14" rx="7" fill="#8a4f04"/>
+  <rect x="37" y="34" width="86" height="62" rx="16" fill="url(#laniGlass)"/>
+  <rect x="33" y="104" width="16" height="98" rx="8" fill="#d88708" opacity="0.74"/>
+  <rect x="111" y="104" width="16" height="98" rx="8" fill="#d88708" opacity="0.74"/>
+  <rect x="54" y="104" width="52" height="58" rx="12" fill="#b45309" opacity="0.36"/>
+  <rect x="52" y="170" width="56" height="36" rx="10" fill="#854d0e" opacity="0.3"/>
+  <rect x="34" y="214" width="92" height="24" rx="12" fill="#0f172a" opacity="0.24"/>
+  <rect x="64" y="222" width="32" height="6" rx="3" fill="#0b1228" opacity="0.45"/>
+  <rect x="42" y="220" width="14" height="8" rx="4" fill="#fff5c6"/>
+  <rect x="104" y="220" width="14" height="8" rx="4" fill="#fff5c6"/>
+  <rect x="58" y="40" width="44" height="6" rx="3" fill="#ffffff" opacity="0.42"/>
 </svg>
