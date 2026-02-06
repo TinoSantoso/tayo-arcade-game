@@ -43,7 +43,7 @@ export const levels: LevelConfig[] = [
   {
     id: 2,
     name: 'Main Road',
-    distance: 800,
+    distance: 1000,
     baseSpeed: 3.8,
     obstacleFrequency: 'medium',
     theme: {
@@ -61,7 +61,7 @@ export const levels: LevelConfig[] = [
   {
     id: 3,
     name: 'Highway',
-    distance: 1200,
+    distance: 1500,
     baseSpeed: 4.6,
     obstacleFrequency: 'high',
     theme: {

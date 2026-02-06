@@ -1,23 +1,28 @@
 <svg width="160" height="260" viewBox="0 0 160 260" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="obsBusBody" x1="80" y1="8" x2="80" y2="252" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#4f8df5"/>
-      <stop offset="1" stop-color="#2f67cf"/>
+    <linearGradient id="obBusBody" x1="80" y1="10" x2="80" y2="248" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4f8def"/>
+      <stop offset="0.62" stop-color="#316fd2"/>
+      <stop offset="1" stop-color="#2758b6"/>
     </linearGradient>
-    <linearGradient id="obsBusGlass" x1="80" y1="34" x2="80" y2="96" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ddf1ff"/>
-      <stop offset="1" stop-color="#78c6ff"/>
+    <linearGradient id="obBusGlass" x1="80" y1="32" x2="80" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e7f5ff"/>
+      <stop offset="1" stop-color="#7ec2ef"/>
     </linearGradient>
   </defs>
-  <ellipse cx="80" cy="238" rx="43" ry="13" fill="#0f172a" opacity="0.2"/>
-  <rect x="23" y="10" width="114" height="238" rx="30" fill="url(#obsBusBody)" stroke="#1e40af" stroke-width="4"/>
-  <rect x="45" y="16" width="70" height="14" rx="7" fill="#0f2f7f"/>
-  <rect x="38" y="34" width="84" height="62" rx="16" fill="url(#obsBusGlass)"/>
-  <rect x="33" y="104" width="14" height="96" rx="7" fill="#1e3a8a" opacity="0.75"/>
-  <rect x="113" y="104" width="14" height="96" rx="7" fill="#1e3a8a" opacity="0.75"/>
-  <rect x="54" y="106" width="52" height="56" rx="12" fill="#1e40af" opacity="0.4"/>
-  <rect x="52" y="170" width="56" height="34" rx="10" fill="#1e293b" opacity="0.32"/>
-  <rect x="36" y="214" width="88" height="22" rx="11" fill="#0f172a" opacity="0.24"/>
-  <rect x="44" y="220" width="13" height="7" rx="3.5" fill="#fff4bf"/>
-  <rect x="103" y="220" width="13" height="7" rx="3.5" fill="#fff4bf"/>
+
+  <ellipse cx="80" cy="234" rx="44" ry="13" fill="#0f172a" opacity="0.21"/>
+  <rect x="22" y="10" width="116" height="238" rx="29" fill="url(#obBusBody)" stroke="#1f3f8f" stroke-width="4"/>
+  <rect x="38" y="32" width="84" height="54" rx="14" fill="url(#obBusGlass)"/>
+  <rect x="46" y="16" width="68" height="11" rx="5.5" fill="#0d2f79"/>
+
+  <rect x="34" y="96" width="14" height="104" rx="7" fill="#244da2" opacity="0.8"/>
+  <rect x="112" y="96" width="14" height="104" rx="7" fill="#244da2" opacity="0.8"/>
+  <rect x="55" y="102" width="50" height="28" rx="8" fill="#1d4fa8" opacity="0.48"/>
+  <rect x="55" y="134" width="50" height="28" rx="8" fill="#1d478f" opacity="0.44"/>
+  <rect x="55" y="166" width="50" height="28" rx="8" fill="#1a3c76" opacity="0.4"/>
+
+  <rect x="36" y="210" width="88" height="22" rx="11" fill="#0f172a" opacity="0.28"/>
+  <rect x="44" y="216" width="12" height="8" rx="4" fill="#fff2b9"/>
+  <rect x="104" y="216" width="12" height="8" rx="4" fill="#fff2b9"/>
 </svg>

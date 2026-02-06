@@ -38,6 +38,7 @@ type PersistedProgress = {
   bestByLevel: Record<number, BestStats>
   audioEnabled?: boolean
   difficulty?: Difficulty
+  distanceProfileVersion?: number
 }
 
 type GameStore = {
@@ -87,6 +88,7 @@ const PLAYER_Y = PLAYFIELD_HEIGHT - PLAYER_BOTTOM_OFFSET - PLAYER_HEIGHT
 const FINISH_VISIBLE_DISTANCE = 200
 const MAX_FRAME_DELTA_MS = 80
 const STORAGE_KEY = 'tayo-bus-progress-v1'
+const DISTANCE_PROFILE_VERSION = 2
 const PLAYER_PROBE_OFFSET = 0.24
 const COLLISION_PROBE_SIZE = 6
 const OBSTACLE_HITBOX = { top: 0.4, bottom: 0.78 }
@@ -136,7 +138,24 @@ const loadProgress = (): Partial<PersistedProgress> => {
     if (!raw) {
       return {}
     }
-    return JSON.parse(raw) as Partial<PersistedProgress>
+    const parsed = JSON.parse(raw) as Partial<PersistedProgress>
+    const storedVersion =
+      typeof parsed.distanceProfileVersion === 'number'
+        ? parsed.distanceProfileVersion
+        : 1
+
+    if (storedVersion >= DISTANCE_PROFILE_VERSION) {
+      return parsed
+    }
+
+    const migrated: Partial<PersistedProgress> = {
+      ...parsed,
+      bestByLevel: {},
+      distanceProfileVersion: DISTANCE_PROFILE_VERSION,
+    }
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated))
+    return migrated
   } catch {
     return {}
   }
@@ -148,7 +167,13 @@ const saveProgress = (progress: PersistedProgress) => {
   }
 
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress))
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        ...progress,
+        distanceProfileVersion: DISTANCE_PROFILE_VERSION,
+      })
+    )
   } catch {
     // Ignore storage errors (e.g. private mode).
   }

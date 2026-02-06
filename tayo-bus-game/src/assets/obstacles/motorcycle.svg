@@ -1,25 +1,27 @@
 <svg width="100" height="200" viewBox="0 0 100 200" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bikeBody" x1="50" y1="20" x2="50" y2="180" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#1f2937"/>
-      <stop offset="1" stop-color="#0f172a"/>
+    <linearGradient id="obBikeBody" x1="50" y1="26" x2="50" y2="176" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2a3442"/>
+      <stop offset="1" stop-color="#111827"/>
     </linearGradient>
-    <linearGradient id="bikeAccent" x1="50" y1="30" x2="50" y2="102" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#6dd6ff"/>
-      <stop offset="1" stop-color="#0ea5e9"/>
+    <linearGradient id="obBikeGlass" x1="50" y1="42" x2="50" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8ee0ff"/>
+      <stop offset="1" stop-color="#1ea5df"/>
     </linearGradient>
   </defs>
-  <ellipse cx="50" cy="188" rx="24" ry="9" fill="#0f172a" opacity="0.2"/>
-  <circle cx="50" cy="40" r="13" fill="#111827"/>
-  <circle cx="50" cy="40" r="8" fill="#334155"/>
+
+  <ellipse cx="50" cy="188" rx="24" ry="9" fill="#0f172a" opacity="0.22"/>
+  <circle cx="50" cy="42" r="13" fill="#111827"/>
+  <circle cx="50" cy="42" r="8" fill="#42526a"/>
   <circle cx="50" cy="168" r="15" fill="#111827"/>
-  <circle cx="50" cy="168" r="9" fill="#334155"/>
-  <rect x="42" y="24" width="16" height="150" rx="8" fill="url(#bikeBody)"/>
-  <rect x="38" y="46" width="24" height="56" rx="10" fill="url(#bikeAccent)"/>
-  <rect x="40" y="108" width="20" height="32" rx="8" fill="#1e293b"/>
-  <rect x="34" y="56" width="32" height="8" rx="4" fill="#f59e0b"/>
-  <rect x="29" y="24" width="12" height="6" rx="3" fill="#111827"/>
-  <rect x="59" y="24" width="12" height="6" rx="3" fill="#111827"/>
-  <circle cx="42" cy="176" r="4" fill="#fbbf24"/>
-  <circle cx="58" cy="176" r="4" fill="#fbbf24"/>
+  <circle cx="50" cy="168" r="9" fill="#42526a"/>
+
+  <rect x="42" y="26" width="16" height="148" rx="8" fill="url(#obBikeBody)"/>
+  <rect x="39" y="46" width="22" height="54" rx="9" fill="url(#obBikeGlass)"/>
+  <rect x="40" y="106" width="20" height="34" rx="8" fill="#1e293b"/>
+  <rect x="34" y="58" width="32" height="7" rx="3.5" fill="#f59e0b"/>
+  <rect x="30" y="24" width="11" height="6" rx="3" fill="#0f172a"/>
+  <rect x="59" y="24" width="11" height="6" rx="3" fill="#0f172a"/>
+  <circle cx="42" cy="176" r="4" fill="#fcd34d"/>
+  <circle cx="58" cy="176" r="4" fill="#fcd34d"/>
 </svg>
