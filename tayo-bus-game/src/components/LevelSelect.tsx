@@ -64,10 +64,17 @@ const LevelSelect = () => {
                 </span>
               </div>
               <h3 className="mt-3 text-xl font-bold text-slate-900">
+                <span className="mr-1.5">{level.theme.envIcon}</span>
                 {level.name}
               </h3>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: level.theme.accent }}>
+                {level.theme.envLabel}
+                {level.theme.weather !== 'none' && (
+                  <span className="ml-2 text-slate-400">• {level.theme.weather}</span>
+                )}
+              </p>
               <p className="mt-2 text-sm text-slate-600">
-                {level.distance}m • Base speed {formatSpeed(level.baseSpeed)}
+                {level.distance}m • Base speed {formatSpeed(level.baseSpeed)} • {level.theme.obstaclePool.length} vehicle types
               </p>
 
               {best ? (
