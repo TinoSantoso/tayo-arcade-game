@@ -1,6 +1,6 @@
 export type ObstacleFrequency = 'low' | 'medium' | 'high'
 
-export type ObstacleVariant = 'motorcycle' | 'car' | 'bus' | 'truck'
+export type ObstacleVariant = 'motorcycle' | 'car' | 'truck'
 
 export type Weather = 'none' | 'rain' | 'snow' | 'leaves' | 'dust'
 
@@ -59,7 +59,7 @@ export const levels: LevelConfig[] = [
       weather: 'none',
       envIcon: '🛣️',
       envLabel: 'Suburban',
-      obstaclePool: ['motorcycle', 'car', 'bus'],
+      obstaclePool: ['motorcycle', 'car', 'truck'],
     },
   },
   {
@@ -77,7 +77,7 @@ export const levels: LevelConfig[] = [
       weather: 'none',
       envIcon: '🚀',
       envLabel: 'Highway',
-      obstaclePool: ['car', 'bus', 'truck'],
+      obstaclePool: ['car', 'truck'],
     },
   },
   {
@@ -95,7 +95,7 @@ export const levels: LevelConfig[] = [
       weather: 'leaves',
       envIcon: '⛰️',
       envLabel: 'Mountain',
-      obstaclePool: ['motorcycle', 'car', 'bus'],
+      obstaclePool: ['motorcycle', 'car', 'truck'],
     },
   },
   {
@@ -113,7 +113,7 @@ export const levels: LevelConfig[] = [
       weather: 'dust',
       envIcon: '🚇',
       envLabel: 'Tunnel',
-      obstaclePool: ['car', 'bus', 'truck'],
+      obstaclePool: ['car', 'truck'],
     },
   },
   {
@@ -131,7 +131,7 @@ export const levels: LevelConfig[] = [
       weather: 'leaves',
       envIcon: '🌾',
       envLabel: 'Countryside',
-      obstaclePool: ['motorcycle', 'car', 'bus', 'truck'],
+      obstaclePool: ['motorcycle', 'car', 'truck'],
     },
   },
 ]

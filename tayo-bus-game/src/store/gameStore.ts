@@ -14,7 +14,7 @@ export type Obstacle = {
   id: number
   lane: 0 | 1 | 2
   y: number
-  variant: 'motorcycle' | 'car' | 'bus' | 'truck'
+  variant: 'motorcycle' | 'car' | 'truck'
 }
 
 export type Difficulty = 'easy' | 'normal' | 'hard'
@@ -99,7 +99,6 @@ const CRASH_DURATION_MS = 600
 const OBSTACLE_SIZES: Record<Obstacle['variant'], { height: number }> = {
   motorcycle: { height: 88 },
   car: { height: 110 },
-  bus: { height: 140 },
   truck: { height: 160 },
 }
 
@@ -561,7 +560,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           if (availableLanes.length > 0) {
             const lane =
               availableLanes[Math.floor(Math.random() * availableLanes.length)]
-            const pool = levelCfg?.theme.obstaclePool ?? ['motorcycle', 'car', 'bus']
+            const pool = levelCfg?.theme.obstaclePool ?? ['motorcycle', 'car', 'truck']
             const variant = pool[Math.floor(Math.random() * pool.length)] as Obstacle['variant']
 
             obstacles = [

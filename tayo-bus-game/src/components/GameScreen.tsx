@@ -2,7 +2,6 @@ import type { TouchEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { playLaneChange } from '../audio/audioEngine'
-import busObstacle from '../assets/obstacles/bus.svg'
 import carObstacle from '../assets/obstacles/car.svg'
 import motorcycleObstacle from '../assets/obstacles/motorcycle.svg'
 import truckObstacle from '../assets/obstacles/truck.svg'
@@ -97,7 +96,6 @@ const GameScreen = () => {
     () => ({
       motorcycle: { width: 40, height: 90, src: motorcycleObstacle },
       car: { width: 56, height: 112, src: carObstacle },
-      bus: { width: 66, height: 144, src: busObstacle },
       truck: { width: 70, height: 160, src: truckObstacle },
     }),
     []
@@ -275,18 +273,19 @@ const GameScreen = () => {
 
   return (
     <section className="space-y-5 animate-fade-up">
-      <header className="bus-route-strip">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="bus-route-badge">{routeCode}</span>
+      <header className="bus-route-strip relative overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'repeating-linear-gradient(135deg, currentColor 0 2px, transparent 2px 12px)' }} />
+        <div className="relative flex min-w-0 items-center gap-3">
+          <span className="bus-route-badge" style={{ background: theme.accent, color: '#fff' }}>{routeCode}</span>
           <div className="min-w-0">
-            <p className="bus-strip-label">Current Route</p>
+            <p className="bus-strip-label">{level?.theme.envIcon} Current Route</p>
             <h2 className="truncate text-xl font-bold text-slate-950 sm:text-2xl">
               {level?.name ?? 'Road Run'}
             </h2>
           </div>
         </div>
 
-        <div className="bus-strip-right">
+        <div className="relative bus-strip-right">
           <div className="bus-segment-track" role="presentation">
             <div
               className="bus-segment-fill"
@@ -294,21 +293,22 @@ const GameScreen = () => {
             />
           </div>
           <div className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 sm:text-xs">
-            <span className="truncate">{level?.theme.envIcon} {level?.theme.envLabel ?? 'Route'} {progressPercent >= 100 ? '• Terminal' : ''}</span>
-            <span>{distanceRounded}m / {levelDistance}m</span>
+            <span className="truncate">{level?.theme.envLabel ?? 'Route'} {progressPercent >= 100 ? '🏁 Terminal' : ''}</span>
+            <span className="tabular-nums">{distanceRounded}m / {levelDistance}m</span>
           </div>
         </div>
       </header>
 
       <div className={`bus-road-frame ${isCrashing ? 'bus-warning-live' : ''}`}>
         <div className="bus-road-header">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: theme.accent, boxShadow: `0 0 8px ${theme.accent}` }} />
             Level {currentLevel}
           </p>
           <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600 sm:text-xs">
-            <span>Target {speedLabel} m/s</span>
+            <span>⚡ {speedLabel} m/s</span>
             <span className="h-1 w-1 rounded-full bg-slate-400" />
-            <span style={{ color: theme.accent }}>Traffic {level?.obstacleFrequency ?? 'low'}</span>
+            <span style={{ color: theme.accent }}>🚦 {level?.obstacleFrequency ?? 'low'}</span>
           </div>
         </div>
 
@@ -393,15 +393,20 @@ const GameScreen = () => {
             <div className="flex-1" />
           </div>
 
-          <div className="absolute left-4 right-4 top-4 rounded-full bg-white/20 p-2">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full transition-all duration-200"
-                style={{
-                  width: `${progressPercent}%`,
-                  backgroundColor: theme.accent,
-                }}
-              />
+          <div className="absolute left-3 right-3 top-3 z-10 rounded-2xl bg-black/30 p-2 backdrop-blur-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/70">{progressPercent}%</span>
+              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/15">
+                <div
+                  className="h-full rounded-full transition-all duration-200"
+                  style={{
+                    width: `${progressPercent}%`,
+                    background: `linear-gradient(90deg, ${theme.accent}, ${theme.accent}dd)`,
+                    boxShadow: `0 0 12px ${theme.accent}88`,
+                  }}
+                />
+              </div>
+              <span className="text-[10px] font-bold text-white/80">{distanceRounded}m</span>
             </div>
           </div>
 
@@ -522,40 +527,40 @@ const GameScreen = () => {
 
       <div className="bus-dashboard-strip">
         <div className="bus-dashboard-grid">
-          <article className="bus-meter-card">
-            <p className="bus-meter-label">Speed</p>
-            <p className="bus-meter-value">{Math.round(speed)} m/s</p>
+          <article className="bus-meter-card group">
+            <p className="bus-meter-label">⚡ Speed</p>
+            <p className="bus-meter-value" style={{ color: theme.accent }}>{Math.round(speed)} m/s</p>
             <div className="bus-meter-track">
               <div
                 className="bus-meter-fill"
-                style={{ width: `${speedGaugePercent}%`, backgroundColor: theme.accent }}
+                style={{ width: `${speedGaugePercent}%`, background: `linear-gradient(90deg, ${theme.accent}, ${theme.accent}cc)` }}
               />
             </div>
           </article>
 
           <article className="bus-meter-card">
-            <p className="bus-meter-label">Run Time</p>
+            <p className="bus-meter-label">⏱ Run Time</p>
             <p className="bus-meter-value">{timeElapsed.toFixed(1)}s</p>
-            <p className={`text-xs font-semibold ${timeElapsed <= parTime * 1.1 ? 'text-emerald-600' : timeElapsed <= parTime * 1.35 ? 'text-amber-600' : 'text-rose-600'}`}>
-              Par {parTime.toFixed(1)}s
+            <p className={`text-xs font-semibold ${timeElapsed <= parTime * 1.1 ? 'text-emerald-500' : timeElapsed <= parTime * 1.35 ? 'text-amber-500' : 'text-rose-500'}`}>
+              🎯 Par {parTime.toFixed(1)}s
             </p>
           </article>
 
           <article className="bus-meter-card">
-            <p className="bus-meter-label">Route Progress</p>
+            <p className="bus-meter-label">📍 Route Progress</p>
             <p className="bus-meter-value">{progressPercent}%</p>
             <p className="text-xs font-semibold text-slate-500">{distanceRounded}m / {levelDistance}m</p>
           </article>
 
           <article className="bus-meter-card">
-            <p className="bus-meter-label">Obstacles Avoided</p>
+            <p className="bus-meter-label">🛡 Obstacles Avoided</p>
             <p className="bus-meter-value">{obstaclesAvoided}</p>
             {isCrashing ? (
-              <p className="text-xs font-semibold text-rose-600">
-                Impact cooldown {Math.ceil(crashTimerMs)}ms
+              <p className="text-xs font-bold text-rose-500 animate-pulse">
+                💥 Impact {Math.ceil(crashTimerMs)}ms
               </p>
             ) : (
-              <p className="text-xs font-semibold text-emerald-600">Driving stable</p>
+              <p className="text-xs font-semibold text-emerald-500">✅ Driving stable</p>
             )}
           </article>
         </div>
@@ -595,24 +600,24 @@ const GameScreen = () => {
               type="button"
               onClick={handleMoveLeft}
               disabled={isCrashing}
-              className="bus-drive-button"
+              className="bus-drive-button group"
             >
-              <span className="text-sm">◀</span>
+              <span className="text-lg transition-transform group-active:scale-90">◀</span>
               <span>Left</span>
             </button>
             <button
               type="button"
               onClick={handleMoveRight}
               disabled={isCrashing}
-              className="bus-drive-button"
+              className="bus-drive-button group"
             >
               <span>Right</span>
-              <span className="text-sm">▶</span>
+              <span className="text-lg transition-transform group-active:scale-90">▶</span>
             </button>
           </div>
 
           <p className="bus-control-hint">
-            Desktop: <span className="font-bold">← / →</span> · Mobile: swipe or tap lane
+            ⌨️ <span className="font-bold">← / →</span> · 📱 swipe or tap lane
           </p>
         </div>
       </div>
