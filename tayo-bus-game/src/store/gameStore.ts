@@ -81,17 +81,16 @@ type GameStore = {
 const SPEED_MULTIPLIER = 12
 const PIXELS_PER_METER = 2.4
 const FINISH_BUFFER = 50
-const PLAYFIELD_HEIGHT = 420
-const PLAYER_HEIGHT = 150
-const PLAYER_BOTTOM_OFFSET = 24
+const PLAYFIELD_HEIGHT = 430
+const PLAYER_HEIGHT = 128
+const PLAYER_BOTTOM_OFFSET = 32
 const PLAYER_Y = PLAYFIELD_HEIGHT - PLAYER_BOTTOM_OFFSET - PLAYER_HEIGHT
 const FINISH_VISIBLE_DISTANCE = 200
 const MAX_FRAME_DELTA_MS = 80
 const STORAGE_KEY = 'tayo-bus-progress-v1'
 const DISTANCE_PROFILE_VERSION = 2
-const PLAYER_PROBE_OFFSET = 0.24
-const COLLISION_PROBE_SIZE = 6
-const OBSTACLE_HITBOX = { top: 0.44, bottom: 0.74 }
+const PLAYER_HITBOX = { top: 0.02, bottom: 0.98 }
+const OBSTACLE_HITBOX = { top: 0.02, bottom: 0.98 }
 const FINISH_LINE_HEIGHT = 48
 const LANES: Array<0 | 1 | 2> = [0, 1, 2]
 const CRASH_DURATION_MS = 600
@@ -420,10 +419,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const progressRemaining = state.finishLineDistance - distanceTraveled
       const finishVisible = progressRemaining <= FINISH_VISIBLE_DISTANCE
 
-      const playerProbe = PLAYER_Y + PLAYER_HEIGHT * PLAYER_PROBE_OFFSET
-      const probeTop = playerProbe - COLLISION_PROBE_SIZE
-      const probeBottom = playerProbe + COLLISION_PROBE_SIZE
-      const playerAvoidY = PLAYER_Y + PLAYER_HEIGHT * 0.7
+      const playerTop = PLAYER_Y + PLAYER_HEIGHT * PLAYER_HITBOX.top
+      const playerBottom = PLAYER_Y + PLAYER_HEIGHT * PLAYER_HITBOX.bottom
+      const playerAvoidY = PLAYER_Y + PLAYER_HEIGHT * 0.9
       const obstacleSpeed = distanceDelta * PIXELS_PER_METER
       let newlyAvoided = 0
       const movedObstacles = state.obstacles
@@ -452,7 +450,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const obstacleTop = obstacle.y + obstacleHeight * OBSTACLE_HITBOX.top
         const obstacleBottom =
           obstacle.y + obstacleHeight * OBSTACLE_HITBOX.bottom
-        return probeBottom >= obstacleTop && probeTop <= obstacleBottom
+        return playerBottom >= obstacleTop && playerTop <= obstacleBottom
       })
 
       if (collidedObstacle) {
@@ -467,18 +465,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       }
 
+      const playerMidY = PLAYER_Y + PLAYER_HEIGHT * 0.5
       const finishLineY = finishVisible
         ? Math.max(
             -FINISH_LINE_HEIGHT,
             (1 - progressRemaining / FINISH_VISIBLE_DISTANCE) *
-              (PLAYER_Y + PLAYER_HEIGHT * PLAYER_PROBE_OFFSET) -
+              playerMidY -
               FINISH_LINE_HEIGHT
           )
         : null
       const finishLineCrossed =
         finishLineY !== null &&
-        finishLineY + FINISH_LINE_HEIGHT >=
-          PLAYER_Y + PLAYER_HEIGHT * PLAYER_PROBE_OFFSET
+        finishLineY + FINISH_LINE_HEIGHT >= playerMidY
 
       if (distanceTraveled >= state.finishLineDistance && finishLineCrossed) {
         const finalTime = state.timeElapsed + deltaSeconds
