@@ -406,9 +406,7 @@ const GameScreen = () => {
                 style={{ top: finishLineY }}
               >
                 <div className="kid-finish-line">
-                  <span className="text-xl">🏁</span>
-                  <span className="kid-finish-text">FINISH!</span>
-                  <span className="text-xl">🏁</span>
+                  <span className="kid-finish-text">FINISH</span>
                 </div>
               </div>
             )}
