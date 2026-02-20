@@ -91,15 +91,15 @@ const STORAGE_KEY = 'tayo-bus-progress-v1'
 const DISTANCE_PROFILE_VERSION = 2
 const PLAYER_PROBE_OFFSET = 0.24
 const COLLISION_PROBE_SIZE = 6
-const OBSTACLE_HITBOX = { top: 0.4, bottom: 0.78 }
+const OBSTACLE_HITBOX = { top: 0.44, bottom: 0.74 }
 const FINISH_LINE_HEIGHT = 48
 const LANES: Array<0 | 1 | 2> = [0, 1, 2]
 const CRASH_DURATION_MS = 600
 
 const OBSTACLE_SIZES: Record<Obstacle['variant'], { height: number }> = {
-  motorcycle: { height: 88 },
-  car: { height: 110 },
-  truck: { height: 160 },
+  motorcycle: { height: 72 },
+  car: { height: 90 },
+  truck: { height: 130 },
 }
 
 const SPEED_MULTIPLIER_BY_DIFFICULTY: Record<Difficulty, number> = {
@@ -109,15 +109,15 @@ const SPEED_MULTIPLIER_BY_DIFFICULTY: Record<Difficulty, number> = {
 }
 
 const SPAWN_COOLDOWN_BY_DIFFICULTY: Record<Difficulty, number> = {
-  easy: 2,
-  normal: 1.35,
-  hard: 0.85,
+  easy: 2.6,
+  normal: 1.7,
+  hard: 1.1,
 }
 
 const LANE_CLEAR_THRESHOLD_BY_DIFFICULTY: Record<Difficulty, number> = {
-  easy: 320,
-  normal: 280,
-  hard: 220,
+  easy: 400,
+  normal: 340,
+  hard: 260,
 }
 
 const createRunStats = (overrides: Partial<RunStats> = {}): RunStats => ({
@@ -192,11 +192,11 @@ const computeStars = (timeElapsed: number, parTime: number, avoidedRate: number)
 const getSpawnInterval = (frequency: ObstacleFrequency) => {
   switch (frequency) {
     case 'high':
-      return 0.9
-    case 'medium':
       return 1.2
-    default:
+    case 'medium':
       return 1.6
+    default:
+      return 2.1
   }
 }
 
@@ -568,7 +568,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
               {
                 id: nextObstacleId,
                 lane,
-                y: -200,
+                y: -240,
                 variant,
               },
             ]

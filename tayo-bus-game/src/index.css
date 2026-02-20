@@ -26,7 +26,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top, #fff7e1 0%, #f9f3e8 45%, #f0e7d5 100%);
+  background: radial-gradient(ellipse at top, #fff7e1 0%, #fef3c7 30%, #fde68a 70%, #fbbf24 100%);
 }
 
 #root {
@@ -104,6 +104,355 @@ body {
     rgba(255, 255, 255, 0) 10px 16px
   );
   transition: width 200ms ease-out;
+}
+
+/* ===== KID-FRIENDLY GAME UI ===== */
+
+.kid-route-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 3px solid rgba(251, 191, 36, 0.5);
+  border-radius: 2rem;
+  padding: 0.8rem 1rem;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fde68a 100%);
+  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.2), inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+.kid-level-bubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  box-shadow: 0 6px 0 rgba(0,0,0,0.12), 0 10px 20px rgba(0,0,0,0.1);
+  flex-shrink: 0;
+  animation: kid-bubble-bob 2s ease-in-out infinite;
+}
+
+@keyframes kid-bubble-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.kid-route-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #78350f;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.kid-route-subtitle {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #92400e;
+  margin: 0.1rem 0 0;
+  letter-spacing: 0.04em;
+}
+
+.kid-progress-strip {
+  width: 100%;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.kid-progress-track {
+  position: relative;
+  height: 1rem;
+  border-radius: 999px;
+  overflow: visible;
+  background: rgba(120, 53, 15, 0.15);
+  border: 2px solid rgba(120, 53, 15, 0.1);
+}
+
+.kid-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 300ms ease-out;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.5);
+}
+
+.kid-progress-bus {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.2rem;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  transition: left 300ms ease-out;
+  z-index: 2;
+}
+
+.kid-progress-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #92400e;
+}
+
+/* Kid road frame */
+.kid-road-frame {
+  border: 3px solid rgba(99, 102, 241, 0.3);
+  border-radius: 2rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f0f4ff 100%);
+  padding: 0.6rem;
+  box-shadow: 0 12px 32px rgba(99, 102, 241, 0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+  transition: border-color 200ms ease;
+}
+
+.kid-warning-shake {
+  animation: kid-warning-shake 400ms ease-in-out infinite;
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+@keyframes kid-warning-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+.kid-road-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0 0.25rem;
+}
+
+.kid-speed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+  letter-spacing: 0.04em;
+}
+
+.kid-traffic-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.82rem;
+  font-weight: 800;
+  border: 2px solid rgba(251, 191, 36, 0.4);
+}
+
+/* On-road progress bar */
+.kid-road-progress-bar {
+  height: 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.kid-road-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 250ms ease-out;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
+}
+
+/* Finish line */
+.kid-finish-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 90%;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fbbf24, #f97316, #ef4444, #ec4899, #8b5cf6, #3b82f6, #22c55e, #fbbf24);
+  background-size: 200% 100%;
+  animation: kid-rainbow-slide 2s linear infinite;
+  box-shadow: 0 6px 0 rgba(0,0,0,0.15), 0 12px 24px rgba(0,0,0,0.2);
+}
+
+@keyframes kid-rainbow-slide {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+.kid-finish-text {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* Kid dashboard */
+.kid-dashboard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  border: 3px solid rgba(251, 191, 36, 0.4);
+  border-radius: 2rem;
+  padding: 0.8rem;
+  background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+  box-shadow: 0 10px 28px rgba(251, 191, 36, 0.15);
+}
+
+.kid-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.kid-stat-bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid;
+  box-shadow: 0 5px 0 rgba(0,0,0,0.08), 0 8px 16px rgba(0,0,0,0.06);
+  transition: transform 200ms ease;
+}
+
+.kid-stat-bubble:active {
+  transform: scale(0.95);
+}
+
+.kid-stat-number {
+  font-size: 1.1rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.kid-crash-bubble {
+  border-color: #fb7185 !important;
+  animation: kid-crash-pop 300ms ease-in-out infinite alternate;
+}
+
+@keyframes kid-crash-pop {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+/* Lane indicator */
+.kid-lane-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.kid-lane-pip {
+  width: 2.5rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  border: 2px solid #cbd5e1;
+  transition: all 200ms ease;
+}
+
+.kid-lane-pip-active {
+  transform: scaleY(1.4);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+}
+
+/* Kid controls */
+.kid-controls {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.kid-drive-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 1.5rem;
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 64px;
+}
+
+.kid-drive-btn-left {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #fff;
+  box-shadow: 0 8px 0 #1d4ed8, 0 12px 20px rgba(37, 99, 235, 0.3);
+}
+
+.kid-drive-btn-right {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #fff;
+  box-shadow: 0 8px 0 #c2410c, 0 12px 20px rgba(234, 88, 12, 0.3);
+}
+
+.kid-drive-btn:active:not(:disabled) {
+  transform: translateY(6px);
+  box-shadow: 0 2px 0 #1d4ed8, 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.kid-drive-btn-right:active:not(:disabled) {
+  box-shadow: 0 2px 0 #c2410c, 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.kid-drive-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+.kid-drive-arrow {
+  font-size: 2.2rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+}
+
+.kid-drive-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes kid-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.kid-bounce {
+  animation: kid-bounce 1.5s ease-in-out infinite;
+}
+
+.kid-crash-shake {
+  animation: bus-crash-shake 360ms ease-in-out infinite;
+}
+
+.kid-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #92400e;
+  text-align: center;
 }
 
 .bus-road-frame {
@@ -785,7 +1134,13 @@ body {
   .obstacle-motorcycle,
   .player-bus-glow,
   .player-headlight-glint,
-  .weather-particle {
+  .weather-particle,
+  .kid-bubble-bob,
+  .kid-rainbow-slide,
+  .kid-crash-pop,
+  .kid-bounce,
+  .kid-crash-shake,
+  .kid-warning-shake {
     animation: none !important;
   }
 }

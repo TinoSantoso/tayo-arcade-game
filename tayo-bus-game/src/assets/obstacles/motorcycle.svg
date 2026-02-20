@@ -1,27 +1,141 @@
 <svg width="100" height="200" viewBox="0 0 100 200" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="obBikeBody" x1="50" y1="26" x2="50" y2="176" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#2a3442"/>
-      <stop offset="1" stop-color="#111827"/>
+    <linearGradient id="obMoto2Body" x1="50" y1="30" x2="50" y2="170" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="0.6" stop-color="#6d28d9"/>
+      <stop offset="1" stop-color="#5b21b6"/>
     </linearGradient>
-    <linearGradient id="obBikeGlass" x1="50" y1="42" x2="50" y2="100" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#8ee0ff"/>
-      <stop offset="1" stop-color="#1ea5df"/>
+    <linearGradient id="obMoto2Tank" x1="50" y1="70" x2="50" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#6d28d9"/>
+    </linearGradient>
+    <radialGradient id="obMoto2Headlight" cx="0.5" cy="0.3" r="0.5">
+      <stop offset="0" stop-color="#fffbeb"/>
+      <stop offset="0.5" stop-color="#fde047"/>
+      <stop offset="1" stop-color="#eab308"/>
+    </radialGradient>
+    <radialGradient id="obMoto2Taillight" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fca5a5"/>
+      <stop offset="1" stop-color="#dc2626"/>
+    </radialGradient>
+    <linearGradient id="obMoto2Rider" x1="50" y1="80" x2="50" y2="140" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1e293b"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="obMoto2Wheel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#334155"/>
+      <stop offset="1" stop-color="#0f172a"/>
     </linearGradient>
   </defs>
 
-  <ellipse cx="50" cy="188" rx="24" ry="9" fill="#0f172a" opacity="0.22"/>
-  <circle cx="50" cy="42" r="13" fill="#111827"/>
-  <circle cx="50" cy="42" r="8" fill="#42526a"/>
-  <circle cx="50" cy="168" r="15" fill="#111827"/>
-  <circle cx="50" cy="168" r="9" fill="#42526a"/>
+  <!-- Ground shadow -->
+  <ellipse cx="50" cy="192" rx="28" ry="7" fill="#0f172a" opacity="0.18"/>
 
-  <rect x="42" y="26" width="16" height="148" rx="8" fill="url(#obBikeBody)"/>
-  <rect x="39" y="46" width="22" height="54" rx="9" fill="url(#obBikeGlass)"/>
-  <rect x="40" y="106" width="20" height="34" rx="8" fill="#1e293b"/>
-  <rect x="34" y="58" width="32" height="7" rx="3.5" fill="#f59e0b"/>
-  <rect x="30" y="24" width="11" height="6" rx="3" fill="#0f172a"/>
-  <rect x="59" y="24" width="11" height="6" rx="3" fill="#0f172a"/>
-  <circle cx="42" cy="176" r="4" fill="#fcd34d"/>
-  <circle cx="58" cy="176" r="4" fill="#fcd34d"/>
+  <!-- Front wheel (top) -->
+  <ellipse cx="50" cy="30" rx="14" ry="18" fill="url(#obMoto2Wheel)"/>
+  <ellipse cx="50" cy="30" rx="9" ry="13" fill="#475569"/>
+  <ellipse cx="50" cy="30" rx="4" ry="5" fill="#64748b"/>
+  <!-- Front wheel tread lines -->
+  <line x1="38" y1="28" x2="42" y2="28" stroke="#1e293b" stroke-width="1.5" opacity="0.5"/>
+  <line x1="38" y1="33" x2="42" y2="33" stroke="#1e293b" stroke-width="1.5" opacity="0.5"/>
+  <line x1="58" y1="28" x2="62" y2="28" stroke="#1e293b" stroke-width="1.5" opacity="0.5"/>
+  <line x1="58" y1="33" x2="62" y2="33" stroke="#1e293b" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Rear wheel (bottom) -->
+  <ellipse cx="50" cy="172" rx="16" ry="20" fill="url(#obMoto2Wheel)"/>
+  <ellipse cx="50" cy="172" rx="10" ry="14" fill="#475569"/>
+  <ellipse cx="50" cy="172" rx="4" ry="6" fill="#64748b"/>
+  <!-- Rear wheel tread lines -->
+  <line x1="36" y1="170" x2="40" y2="170" stroke="#1e293b" stroke-width="1.5" opacity="0.5"/>
+  <line x1="36" y1="175" x2="40" y2="175" stroke="#1e293b" stroke-width="1.5" opacity="0.5"/>
+  <line x1="60" y1="170" x2="64" y2="170" stroke="#1e293b" stroke-width="1.5" opacity="0.5"/>
+  <line x1="60" y1="175" x2="64" y2="175" stroke="#1e293b" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Front fork / frame connecting front wheel to body -->
+  <path d="M 44,42 L 42,60 L 58,60 L 56,42 Z" fill="#4c1d95" opacity="0.7"/>
+
+  <!-- Headlight -->
+  <ellipse cx="50" cy="20" rx="8" ry="5" fill="url(#obMoto2Headlight)"/>
+  <ellipse cx="50" cy="18" rx="5" ry="3" fill="#fef9c3" opacity="0.5"/>
+
+  <!-- Handlebars -->
+  <rect x="22" y="44" width="56" height="5" rx="2.5" fill="#374151" stroke="#1f2937" stroke-width="1"/>
+  <!-- Handlebar grips -->
+  <rect x="18" y="42" width="10" height="9" rx="4" fill="#1f2937"/>
+  <rect x="72" y="42" width="10" height="9" rx="4" fill="#1f2937"/>
+  <!-- Handlebar grip detail -->
+  <rect x="20" y="44" width="6" height="5" rx="2.5" fill="#374151" opacity="0.5"/>
+  <rect x="74" y="44" width="6" height="5" rx="2.5" fill="#374151" opacity="0.5"/>
+
+  <!-- Motorcycle body / frame -->
+  <path d="
+    M 42,58
+    Q 38,70 37,85
+    L 37,145
+    Q 38,155 42,160
+    L 58,160
+    Q 62,155 63,145
+    L 63,85
+    Q 62,70 58,58
+    Z
+  " fill="url(#obMoto2Body)" stroke="#4c1d95" stroke-width="1.5"/>
+
+  <!-- Fuel tank (wider bulge) -->
+  <path d="
+    M 35,74
+    Q 32,82 32,90
+    Q 32,98 35,104
+    L 65,104
+    Q 68,98 68,90
+    Q 68,82 65,74
+    Z
+  " fill="url(#obMoto2Tank)" stroke="#5b21b6" stroke-width="1"/>
+
+  <!-- Tank highlight -->
+  <ellipse cx="50" cy="86" rx="12" ry="8" fill="#a78bfa" opacity="0.25"/>
+
+  <!-- Tank stripe -->
+  <path d="M 38,82 Q 50,78 62,82" fill="none" stroke="#c4b5fd" stroke-width="1.5" opacity="0.5"/>
+  <path d="M 38,92 Q 50,88 62,92" fill="none" stroke="#c4b5fd" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Rider silhouette - helmet (top-down oval) -->
+  <ellipse cx="50" cy="102" rx="14" ry="12" fill="url(#obMoto2Rider)"/>
+  <!-- Helmet visor -->
+  <ellipse cx="50" cy="98" rx="9" ry="5" fill="#334155" opacity="0.6"/>
+  <!-- Helmet highlight -->
+  <ellipse cx="47" cy="97" rx="4" ry="3" fill="#475569" opacity="0.4"/>
+
+  <!-- Rider body / shoulders -->
+  <path d="
+    M 34,108
+    Q 32,118 34,132
+    L 38,138
+    L 62,138
+    L 66,132
+    Q 68,118 66,108
+    Q 60,104 50,104
+    Q 40,104 34,108
+    Z
+  " fill="url(#obMoto2Rider)" opacity="0.9"/>
+
+  <!-- Rider arms reaching to handlebars -->
+  <path d="M 36,110 Q 28,80 26,48" fill="none" stroke="#1e293b" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
+  <path d="M 64,110 Q 72,80 74,48" fill="none" stroke="#1e293b" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- Exhaust pipe (right side) -->
+  <path d="
+    M 63,120
+    L 70,125
+    L 72,150
+    Q 72,158 68,162
+    L 64,162
+  " fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+  <!-- Exhaust tip -->
+  <ellipse cx="70" cy="160" rx="4" ry="3" fill="#cbd5e1" stroke="#94a3b8" stroke-width="1"/>
+
+  <!-- Taillight -->
+  <ellipse cx="50" cy="162" rx="7" ry="4" fill="url(#obMoto2Taillight)"/>
+
+  <!-- Seat detail line -->
+  <line x1="42" y1="140" x2="58" y2="140" stroke="#4c1d95" stroke-width="0.8" opacity="0.4"/>
 </svg>

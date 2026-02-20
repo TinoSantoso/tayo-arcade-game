@@ -1,36 +1,117 @@
 <svg width="160" height="260" viewBox="0 0 160 260" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="rogiBody" x1="80" y1="8" x2="80" y2="252" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#69e291"/>
-      <stop offset="0.58" stop-color="#30bb60"/>
-      <stop offset="1" stop-color="#219247"/>
+    <linearGradient id="rogiBody2" x1="80" y1="10" x2="80" y2="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4ade80"/>
+      <stop offset="0.5" stop-color="#22c55e"/>
+      <stop offset="1" stop-color="#15803d"/>
     </linearGradient>
-    <linearGradient id="rogiGlass" x1="80" y1="30" x2="80" y2="96" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#edf8ff"/>
-      <stop offset="1" stop-color="#83c6f1"/>
+    <radialGradient id="rogiEyeShine2" cx="0.35" cy="0.3" r="0.5">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dcfce7"/>
+    </radialGradient>
+    <linearGradient id="rogiWindshield2" x1="80" y1="185" x2="80" y2="230" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#dbeafe"/>
+      <stop offset="1" stop-color="#93c5fd"/>
     </linearGradient>
   </defs>
 
-  <ellipse cx="80" cy="234" rx="46" ry="14" fill="#0f172a" opacity="0.2"/>
-  <rect x="20" y="8" width="120" height="244" rx="30" fill="url(#rogiBody)" stroke="#166534" stroke-width="4"/>
-  <rect x="30" y="18" width="100" height="184" rx="22" fill="#ffffff" opacity="0.1"/>
+  <!-- Ground shadow -->
+  <ellipse cx="80" cy="252" rx="62" ry="8" fill="#0f172a" opacity="0.15"/>
 
-  <rect x="50" y="14" width="60" height="11" rx="5.5" fill="#0f6b35"/>
-  <rect x="36" y="30" width="88" height="56" rx="15" fill="url(#rogiGlass)"/>
-  <rect x="40" y="34" width="80" height="8" rx="4" fill="#ffffff" opacity="0.45"/>
+  <!-- Main bus body - slightly wider/stockier -->
+  <path d="M26,44 Q26,14 54,14 L106,14 Q134,14 134,44 L134,222 Q134,250 106,250 L54,250 Q26,250 26,222 Z" fill="url(#rogiBody2)" stroke="#14532d" stroke-width="3"/>
 
-  <rect x="34" y="96" width="14" height="108" rx="7" fill="#15884a" opacity="0.8"/>
-  <rect x="112" y="96" width="14" height="108" rx="7" fill="#15884a" opacity="0.8"/>
+  <!-- Body highlight -->
+  <path d="M34,49 Q34,24 56,24 L104,24 Q126,24 126,49 L126,140 Q80,150 34,140 Z" fill="#ffffff" opacity="0.12"/>
 
-  <rect x="55" y="98" width="50" height="30" rx="8" fill="#178b4d" opacity="0.47"/>
-  <rect x="55" y="132" width="50" height="30" rx="8" fill="#167743" opacity="0.41"/>
-  <rect x="55" y="166" width="50" height="30" rx="8" fill="#135f37" opacity="0.37"/>
+  <!-- Roof destination sign -->
+  <rect x="46" y="20" width="68" height="16" rx="8" fill="#14532d"/>
+  <text x="80" y="32" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#bbf7d0" text-anchor="middle">ROGI</text>
 
-  <rect x="36" y="210" width="88" height="22" rx="11" fill="#0f172a" opacity="0.27"/>
-  <rect x="63" y="216" width="34" height="6" rx="3" fill="#0a1227" opacity="0.52"/>
-  <rect x="43" y="216" width="13" height="8" rx="4" fill="#fff6cf"/>
-  <rect x="104" y="216" width="13" height="8" rx="4" fill="#fff6cf"/>
+  <!-- Rear window -->
+  <rect x="42" y="42" width="76" height="28" rx="10" fill="#14532d" opacity="0.5"/>
+  <rect x="46" y="46" width="68" height="20" rx="8" fill="#bbf7d0" opacity="0.3"/>
 
-  <path d="M48 202h16v10H48z" fill="#126638" opacity="0.56"/>
-  <path d="M96 202h16v10H96z" fill="#126638" opacity="0.56"/>
+  <!-- Side panel stripes -->
+  <rect x="34" y="80" width="92" height="3" rx="1.5" fill="#ffffff" opacity="0.18"/>
+  <rect x="34" y="172" width="92" height="3" rx="1.5" fill="#ffffff" opacity="0.18"/>
+
+  <!-- Zigzag fun detail -->
+  <path d="M44,130 L52,122 L60,130 L68,122 L76,130 L84,122 L92,130 L100,122 L108,130 L116,122" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.12"/>
+
+  <!-- Window row 1 -->
+  <rect x="40" y="88" width="26" height="22" rx="6" fill="#166534" opacity="0.55"/>
+  <rect x="94" y="88" width="26" height="22" rx="6" fill="#166534" opacity="0.55"/>
+  <!-- Window row 2 -->
+  <rect x="40" y="118" width="26" height="22" rx="6" fill="#166534" opacity="0.5"/>
+  <rect x="94" y="118" width="26" height="22" rx="6" fill="#166534" opacity="0.5"/>
+  <!-- Window row 3 -->
+  <rect x="40" y="148" width="26" height="22" rx="6" fill="#166534" opacity="0.45"/>
+  <rect x="94" y="148" width="26" height="22" rx="6" fill="#166534" opacity="0.45"/>
+
+  <!-- Center door -->
+  <rect x="70" y="90" width="20" height="80" rx="4" fill="#14532d" opacity="0.2"/>
+  <line x1="80" y1="92" x2="80" y2="168" stroke="#14532d" stroke-width="1" opacity="0.3"/>
+
+  <!-- Wheels - left side (slightly bigger for stockier look) -->
+  <ellipse cx="22" cy="70" rx="9" ry="15" fill="#1e293b"/>
+  <ellipse cx="22" cy="70" rx="5.5" ry="11" fill="#334155"/>
+  <ellipse cx="22" cy="192" rx="9" ry="15" fill="#1e293b"/>
+  <ellipse cx="22" cy="192" rx="5.5" ry="11" fill="#334155"/>
+  <!-- Wheels - right side -->
+  <ellipse cx="138" cy="70" rx="9" ry="15" fill="#1e293b"/>
+  <ellipse cx="138" cy="70" rx="5.5" ry="11" fill="#334155"/>
+  <ellipse cx="138" cy="192" rx="9" ry="15" fill="#1e293b"/>
+  <ellipse cx="138" cy="192" rx="5.5" ry="11" fill="#334155"/>
+
+  <!-- Wheel hub caps -->
+  <circle cx="22" cy="70" r="3.5" fill="#64748b"/>
+  <circle cx="22" cy="192" r="3.5" fill="#64748b"/>
+  <circle cx="138" cy="70" r="3.5" fill="#64748b"/>
+  <circle cx="138" cy="192" r="3.5" fill="#64748b"/>
+
+  <!-- Side mirrors -->
+  <ellipse cx="18" cy="187" rx="6.5" ry="4.5" fill="#16a34a" stroke="#14532d" stroke-width="1.5"/>
+  <ellipse cx="142" cy="187" rx="6.5" ry="4.5" fill="#16a34a" stroke="#14532d" stroke-width="1.5"/>
+
+  <!-- Front bumper area -->
+  <path d="M36,232 L124,232 Q128,232 128,236 L128,242 Q128,248 120,250 L40,250 Q32,248 32,242 L32,236 Q32,232 36,232 Z" fill="#14532d" opacity="0.35"/>
+
+  <!-- Windshield / Face area (wider) -->
+  <rect x="36" y="192" width="88" height="40" rx="15" fill="url(#rogiWindshield2)"/>
+
+  <!-- === ROGI'S FACE (playful/mischievous) === -->
+  <!-- Left eye - slightly squished for mischievous look -->
+  <ellipse cx="56" cy="207" rx="14" ry="12" fill="url(#rogiEyeShine2)" stroke="#14532d" stroke-width="1.5"/>
+  <!-- Mischievous raised eyebrow (left) -->
+  <path d="M44,196 Q52,190 64,196" fill="none" stroke="#14532d" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Left pupil - looking to the side (mischievous) -->
+  <circle cx="59" cy="209" r="5.5" fill="#1e293b"/>
+  <circle cx="56" cy="204" r="2.2" fill="#ffffff"/>
+  <circle cx="61" cy="207" r="1" fill="#ffffff" opacity="0.5"/>
+
+  <!-- Right eye -->
+  <ellipse cx="104" cy="207" rx="14" ry="12" fill="url(#rogiEyeShine2)" stroke="#14532d" stroke-width="1.5"/>
+  <!-- Mischievous eyebrow (right) - higher on one side -->
+  <path d="M96,193 Q104,189 116,196" fill="none" stroke="#14532d" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Right pupil -->
+  <circle cx="107" cy="209" r="5.5" fill="#1e293b"/>
+  <circle cx="104" cy="204" r="2.2" fill="#ffffff"/>
+  <circle cx="109" cy="207" r="1" fill="#ffffff" opacity="0.5"/>
+
+  <!-- Big wide playful grin -->
+  <path d="M56,223 Q80,237 104,223" fill="none" stroke="#14532d" stroke-width="2.8" stroke-linecap="round"/>
+  <!-- Tongue peeking out -->
+  <ellipse cx="80" cy="229" rx="8" ry="4.5" fill="#f87171" opacity="0.6"/>
+  <ellipse cx="80" cy="228" rx="5" ry="2.5" fill="#fca5a5" opacity="0.5"/>
+
+  <!-- Rosy cheeks -->
+  <ellipse cx="44" cy="221" rx="7" ry="5" fill="#f472b6" opacity="0.2"/>
+  <ellipse cx="116" cy="221" rx="7" ry="5" fill="#f472b6" opacity="0.2"/>
+
+  <!-- Headlights - yellow-green for Rogi -->
+  <ellipse cx="40" cy="240" rx="6.5" ry="4" fill="#bef264" stroke="#84cc16" stroke-width="1"/>
+  <ellipse cx="120" cy="240" rx="6.5" ry="4" fill="#bef264" stroke="#84cc16" stroke-width="1"/>
+  <ellipse cx="40" cy="240" rx="3" ry="2" fill="#ffffff" opacity="0.6"/>
+  <ellipse cx="120" cy="240" rx="3" ry="2" fill="#ffffff" opacity="0.6"/>
 </svg>

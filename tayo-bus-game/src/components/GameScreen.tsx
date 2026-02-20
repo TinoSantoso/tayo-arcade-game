@@ -94,9 +94,9 @@ const GameScreen = () => {
 
   const obstaclePalette = useMemo(
     () => ({
-      motorcycle: { width: 40, height: 90, src: motorcycleObstacle },
-      car: { width: 56, height: 112, src: carObstacle },
-      truck: { width: 70, height: 160, src: truckObstacle },
+      motorcycle: { width: 32, height: 72, src: motorcycleObstacle },
+      car: { width: 46, height: 90, src: carObstacle },
+      truck: { width: 56, height: 130, src: truckObstacle },
     }),
     []
   )
@@ -272,44 +272,38 @@ const GameScreen = () => {
   }
 
   return (
-    <section className="space-y-5 animate-fade-up">
-      <header className="bus-route-strip relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'repeating-linear-gradient(135deg, currentColor 0 2px, transparent 2px 12px)' }} />
-        <div className="relative flex min-w-0 items-center gap-3">
-          <span className="bus-route-badge" style={{ background: theme.accent, color: '#fff' }}>{routeCode}</span>
+    <section className="space-y-4 animate-fade-up">
+      <header className="kid-route-header">
+        <div className="flex items-center gap-3">
+          <span className="kid-level-bubble" style={{ background: theme.accent }}>
+            <span className="text-2xl">{level?.theme.envIcon ?? '🚌'}</span>
+          </span>
           <div className="min-w-0">
-            <p className="bus-strip-label">{level?.theme.envIcon} Current Route</p>
-            <h2 className="truncate text-xl font-bold text-slate-950 sm:text-2xl">
+            <h2 className="kid-route-title truncate">
               {level?.name ?? 'Road Run'}
             </h2>
+            <p className="kid-route-subtitle">Level {currentLevel} · {level?.theme.envLabel ?? 'Route'}</p>
           </div>
         </div>
-
-        <div className="relative bus-strip-right">
-          <div className="bus-segment-track" role="presentation">
+        <div className="kid-progress-strip">
+          <div className="kid-progress-track">
             <div
-              className="bus-segment-fill"
-              style={{ width: `${progressPercent}%`, backgroundColor: theme.accent }}
+              className="kid-progress-fill"
+              style={{ width: `${progressPercent}%`, background: `linear-gradient(90deg, ${theme.accent}, ${theme.accent}dd)` }}
             />
+            <span className="kid-progress-bus" style={{ left: `${Math.max(2, Math.min(92, progressPercent))}%` }}>🚌</span>
           </div>
-          <div className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 sm:text-xs">
-            <span className="truncate">{level?.theme.envLabel ?? 'Route'} {progressPercent >= 100 ? '🏁 Terminal' : ''}</span>
-            <span className="tabular-nums">{distanceRounded}m / {levelDistance}m</span>
+          <div className="flex items-center justify-between">
+            <span className="kid-progress-label">🏁 {progressPercent}%</span>
+            <span className="kid-progress-label">{distanceRounded}m / {levelDistance}m</span>
           </div>
         </div>
       </header>
 
-      <div className={`bus-road-frame ${isCrashing ? 'bus-warning-live' : ''}`}>
-        <div className="bus-road-header">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: theme.accent, boxShadow: `0 0 8px ${theme.accent}` }} />
-            Level {currentLevel}
-          </p>
-          <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600 sm:text-xs">
-            <span>⚡ {speedLabel} m/s</span>
-            <span className="h-1 w-1 rounded-full bg-slate-400" />
-            <span style={{ color: theme.accent }}>🚦 {level?.obstacleFrequency ?? 'low'}</span>
-          </div>
+      <div className={`kid-road-frame ${isCrashing ? 'kid-warning-shake' : ''}`}>
+        <div className="kid-road-info">
+          <span className="kid-speed-badge" style={{ background: theme.accent }}>⚡ {Math.round(speed)}</span>
+          <span className="kid-traffic-badge">🚗 {level?.obstacleFrequency === 'high' ? 'Busy!' : level?.obstacleFrequency === 'medium' ? 'Watch out!' : 'Easy!'}</span>
         </div>
 
         <div
@@ -393,20 +387,15 @@ const GameScreen = () => {
             <div className="flex-1" />
           </div>
 
-          <div className="absolute left-3 right-3 top-3 z-10 rounded-2xl bg-black/30 p-2 backdrop-blur-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-white/70">{progressPercent}%</span>
-              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/15">
-                <div
-                  className="h-full rounded-full transition-all duration-200"
-                  style={{
-                    width: `${progressPercent}%`,
-                    background: `linear-gradient(90deg, ${theme.accent}, ${theme.accent}dd)`,
-                    boxShadow: `0 0 12px ${theme.accent}88`,
-                  }}
-                />
-              </div>
-              <span className="text-[10px] font-bold text-white/80">{distanceRounded}m</span>
+          <div className="absolute left-2 right-2 top-2 z-10">
+            <div className="kid-road-progress-bar">
+              <div
+                className="kid-road-progress-fill"
+                style={{
+                  width: `${progressPercent}%`,
+                  background: `linear-gradient(90deg, #fbbf24, #f97316, #ef4444)`,
+                }}
+              />
             </div>
           </div>
 
@@ -416,20 +405,10 @@ const GameScreen = () => {
                 className="absolute left-0 right-0 flex items-center justify-center"
                 style={{ top: finishLineY }}
               >
-                <div className="relative flex w-full max-w-[92%] items-center gap-3 rounded-full border-2 border-white/70 bg-white/95 px-4 py-2 shadow-xl">
-                  <div
-                    className="absolute -left-6 top-1/2 h-16 w-3 -translate-y-1/2 rounded-full shadow-md"
-                    style={{ backgroundColor: theme.accent }}
-                  />
-                  <div
-                    className="absolute -right-6 top-1/2 h-16 w-3 -translate-y-1/2 rounded-full shadow-md"
-                    style={{ backgroundColor: theme.accent }}
-                  />
-                  <div className="h-7 flex-1 rounded-full bg-[linear-gradient(90deg,_#111827_0_8%,_#f8fafc_8%_16%,_#111827_16%_24%,_#f8fafc_24%_32%,_#111827_32%_40%,_#f8fafc_40%_48%,_#111827_48%_56%,_#f8fafc_56%_64%,_#111827_64%_72%,_#f8fafc_72%_80%,_#111827_80%_88%,_#f8fafc_88%_96%,_#111827_96%_100%)]" />
-                  <span className="text-xs font-bold uppercase tracking-[0.5em] text-slate-900">
-                    Finish
-                  </span>
-                  <div className="h-7 flex-1 rounded-full bg-[linear-gradient(90deg,_#111827_0_8%,_#f8fafc_8%_16%,_#111827_16%_24%,_#f8fafc_24%_32%,_#111827_32%_40%,_#f8fafc_40%_48%,_#111827_48%_56%,_#f8fafc_56%_64%,_#111827_64%_72%,_#f8fafc_72%_80%,_#111827_80%_88%,_#f8fafc_88%_96%,_#111827_96%_100%)]" />
+                <div className="kid-finish-line">
+                  <span className="text-xl">🏁</span>
+                  <span className="kid-finish-text">FINISH!</span>
+                  <span className="text-xl">🏁</span>
                 </div>
               </div>
             )}
@@ -492,8 +471,8 @@ const GameScreen = () => {
               className="player-bus-glow absolute bottom-8 transition-[left,transform,box-shadow] duration-200 ease-out"
               style={{
                 left: lanePositions[playerLane],
-                width: 68,
-                height: 150,
+                width: 58,
+                height: 128,
                 boxShadow: busShadow,
                 transform: `translateX(-50%) rotate(${busRotation})`,
               }}
@@ -525,101 +504,65 @@ const GameScreen = () => {
         </div>
       </div>
 
-      <div className="bus-dashboard-strip">
-        <div className="bus-dashboard-grid">
-          <article className="bus-meter-card group">
-            <p className="bus-meter-label">⚡ Speed</p>
-            <p className="bus-meter-value" style={{ color: theme.accent }}>{Math.round(speed)} m/s</p>
-            <div className="bus-meter-track">
-              <div
-                className="bus-meter-fill"
-                style={{ width: `${speedGaugePercent}%`, background: `linear-gradient(90deg, ${theme.accent}, ${theme.accent}cc)` }}
-              />
+      <div className="kid-dashboard">
+        <div className="kid-stats-row">
+          <div className="kid-stat-bubble" style={{ borderColor: theme.accent }}>
+            <span className="text-2xl">⚡</span>
+            <span className="kid-stat-number" style={{ color: theme.accent }}>{Math.round(speed)}</span>
+          </div>
+          <div className="kid-stat-bubble" style={{ borderColor: '#818cf8' }}>
+            <span className="text-2xl">⏱️</span>
+            <span className="kid-stat-number" style={{ color: '#818cf8' }}>{Math.round(timeElapsed)}s</span>
+          </div>
+          <div className="kid-stat-bubble" style={{ borderColor: '#34d399' }}>
+            <span className="text-2xl">⭐</span>
+            <span className="kid-stat-number" style={{ color: '#34d399' }}>{obstaclesAvoided}</span>
+          </div>
+          {isCrashing && (
+            <div className="kid-stat-bubble kid-crash-bubble">
+              <span className="text-2xl">💥</span>
+              <span className="kid-stat-number text-rose-500">Oh no!</span>
             </div>
-          </article>
-
-          <article className="bus-meter-card">
-            <p className="bus-meter-label">⏱ Run Time</p>
-            <p className="bus-meter-value">{timeElapsed.toFixed(1)}s</p>
-            <p className={`text-xs font-semibold ${timeElapsed <= parTime * 1.1 ? 'text-emerald-500' : timeElapsed <= parTime * 1.35 ? 'text-amber-500' : 'text-rose-500'}`}>
-              🎯 Par {parTime.toFixed(1)}s
-            </p>
-          </article>
-
-          <article className="bus-meter-card">
-            <p className="bus-meter-label">📍 Route Progress</p>
-            <p className="bus-meter-value">{progressPercent}%</p>
-            <p className="text-xs font-semibold text-slate-500">{distanceRounded}m / {levelDistance}m</p>
-          </article>
-
-          <article className="bus-meter-card">
-            <p className="bus-meter-label">🛡 Obstacles Avoided</p>
-            <p className="bus-meter-value">{obstaclesAvoided}</p>
-            {isCrashing ? (
-              <p className="text-xs font-bold text-rose-500 animate-pulse">
-                💥 Impact {Math.ceil(crashTimerMs)}ms
-              </p>
-            ) : (
-              <p className="text-xs font-semibold text-emerald-500">✅ Driving stable</p>
-            )}
-          </article>
+          )}
         </div>
 
-        <div className="bus-control-panel">
-          <div className="bus-signal-row" role="presentation">
+        <div className="kid-lane-dots" role="presentation">
+          {lanePositions.map((_, index) => (
             <span
-              className={`bus-lamp ${
-                visibleTurnSignal === 'left' ? 'bus-lamp-on' : ''
-              }`}
-            >
-              ◀
-            </span>
-            <span className={`bus-lamp ${isCrashing ? 'bus-lamp-warning' : ''}`}>
-              !
-            </span>
-            <span
-              className={`bus-lamp ${
-                visibleTurnSignal === 'right' ? 'bus-lamp-on' : ''
-              }`}
-            >
-              ▶
-            </span>
-          </div>
-
-          <div className="bus-lane-indicator" role="presentation">
-            {lanePositions.map((_, index) => (
-              <span
-                key={`lane-indicator-${index}`}
-                className={`bus-lane-dot ${playerLane === index ? 'is-active' : ''}`}
-              />
-            ))}
-          </div>
-
-          <div className="grid w-full grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={handleMoveLeft}
-              disabled={isCrashing}
-              className="bus-drive-button group"
-            >
-              <span className="text-lg transition-transform group-active:scale-90">◀</span>
-              <span>Left</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleMoveRight}
-              disabled={isCrashing}
-              className="bus-drive-button group"
-            >
-              <span>Right</span>
-              <span className="text-lg transition-transform group-active:scale-90">▶</span>
-            </button>
-          </div>
-
-          <p className="bus-control-hint">
-            ⌨️ <span className="font-bold">← / →</span> · 📱 swipe or tap lane
-          </p>
+              key={`lane-indicator-${index}`}
+              className={`kid-lane-pip ${playerLane === index ? 'kid-lane-pip-active' : ''}`}
+              style={playerLane === index ? { background: theme.accent, borderColor: theme.accent } : undefined}
+            />
+          ))}
         </div>
+
+        <div className="kid-controls">
+          <button
+            type="button"
+            onClick={handleMoveLeft}
+            disabled={isCrashing}
+            className="kid-drive-btn kid-drive-btn-left"
+          >
+            <span className="kid-drive-arrow">👈</span>
+          </button>
+          <div className="kid-drive-center">
+            <span className={`text-3xl ${isCrashing ? 'kid-crash-shake' : 'kid-bounce'}`}>
+              {isCrashing ? '😵' : '😊'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleMoveRight}
+            disabled={isCrashing}
+            className="kid-drive-btn kid-drive-btn-right"
+          >
+            <span className="kid-drive-arrow">👉</span>
+          </button>
+        </div>
+
+        <p className="kid-hint">
+          Swipe or tap the big buttons! 🎮
+        </p>
       </div>
     </section>
   )
