@@ -1,5 +1,5 @@
 import { levels } from '../data/levels'
-import { useGameStore } from '../store/gameStore'
+import { ACHIEVEMENTS, useGameStore } from '../store/gameStore'
 
 const confettiPieces = [
   { left: '6%', size: 8, color: '#f97316', delay: '0ms', duration: '1700ms' },
@@ -21,6 +21,9 @@ const VictoryScreen = () => {
   const resetRun = useGameStore((state) => state.resetRun)
   const startLevel = useGameStore((state) => state.startLevel)
   const lastRunStats = useGameStore((state) => state.lastRunStats)
+  const newAchievement = useGameStore((state) => state.newAchievement)
+  const dismissAchievement = useGameStore((state) => state.dismissAchievement)
+  const unlockedAchievements = useGameStore((state) => state.unlockedAchievements)
 
   const hasNextLevel = currentLevel < levels.length
   const minutes = Math.floor(lastRunStats.timeElapsed / 60)
@@ -30,6 +33,27 @@ const VictoryScreen = () => {
 
   return (
     <section className="relative grid gap-8 lg:grid-cols-[1.4fr_1fr] animate-fade-up">
+      {newAchievement && (() => {
+        const achievementDef = ACHIEVEMENTS.find((a) => a.id === newAchievement)
+        if (!achievementDef) return null
+        return (
+          <div className="col-span-full flex items-center gap-3 rounded-2xl bg-yellow-50 border border-yellow-200 p-4 shadow animate-fade-up">
+            <span className="text-2xl">{achievementDef.icon}</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-yellow-800">{achievementDef.name}</p>
+              <p className="text-xs text-yellow-700">{achievementDef.description}</p>
+            </div>
+            <button
+              type="button"
+              onClick={dismissAchievement}
+              className="rounded-full px-3 py-1 text-xs font-semibold text-yellow-700 border border-yellow-300 hover:bg-yellow-100 transition"
+            >
+              Dismiss
+            </button>
+          </div>
+        )
+      })()}
+
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         {confettiPieces.map((piece, index) => (
           <span
@@ -96,6 +120,16 @@ const VictoryScreen = () => {
             <p className="mt-2 text-lg font-bold text-slate-900">{stars}</p>
           </div>
         </div>
+
+        {lastRunStats.shieldUsed && (
+          <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+            🛡️ Shield Used
+          </span>
+        )}
+
+        <p className="text-sm text-slate-500">
+          🏆 {unlockedAchievements.length}/{ACHIEVEMENTS.length} achievements
+        </p>
       </div>
 
       <div className="space-y-4 rounded-3xl border border-white/60 bg-white/85 p-6 shadow-lg">

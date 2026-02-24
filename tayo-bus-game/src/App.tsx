@@ -1,12 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
+  playAchievement,
+  playCountdownBeep,
+  playCountdownGo,
   playCrash,
+  playShieldBreak,
   playVictory,
   primeAudio,
   setAudioEnabled,
   startMusic,
   stopMusic,
 } from './audio/audioEngine'
+import { preloadAssets } from './utils/preloadAssets'
 import CharacterSelection from './components/CharacterSelection'
 import GameOverScreen from './components/GameOverScreen'
 import GameScreen from './components/GameScreen'
@@ -21,8 +26,13 @@ function App() {
   const audioEnabled = useGameStore((state) => state.audioEnabled)
   const difficulty = useGameStore((state) => state.difficulty)
   const unlockedLevels = useGameStore((state) => state.unlockedLevels)
+  const countdownValue = useGameStore((state) => state.countdownValue)
+  const shieldActive = useGameStore((state) => state.shieldActive)
+  const newAchievement = useGameStore((state) => state.newAchievement)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const isGameplay = gameState === 'playing' || gameState === 'crashing'
+  const prevCountdownRef = useRef(countdownValue)
+  const prevShieldRef = useRef(shieldActive)
+  const isGameplay = gameState === 'playing' || gameState === 'crashing' || gameState === 'countdown' || gameState === 'paused'
   const unlockedCount = Math.min(unlockedLevels, levels.length)
   const stateLabel =
     gameState === 'menu'
@@ -32,10 +42,14 @@ function App() {
         : gameState === 'playing'
           ? 'In Run'
           : gameState === 'crashing'
-            ? 'Crash'
+           ? 'Crash'
+          : gameState === 'countdown'
+           ? 'Get Ready'
+          : gameState === 'paused'
+           ? 'Paused'
           : gameState === 'victory'
-            ? 'Victory'
-            : 'Game Over'
+           ? 'Victory'
+           : 'Game Over'
 
   useEffect(() => {
     setAudioEnabled(audioEnabled)
@@ -47,6 +61,10 @@ function App() {
     }
     window.addEventListener('pointerdown', unlock, { once: true })
     return () => window.removeEventListener('pointerdown', unlock)
+  }, [])
+
+  useEffect(() => {
+    preloadAssets()
   }, [])
 
   useEffect(() => {
@@ -66,6 +84,33 @@ function App() {
       playCrash()
     }
   }, [audioEnabled, gameState])
+
+  useEffect(() => {
+    const prev = prevCountdownRef.current
+    prevCountdownRef.current = countdownValue
+    if (!audioEnabled) return
+    if (countdownValue > 0 && prev !== countdownValue) {
+      playCountdownBeep()
+    }
+    if (countdownValue === 0 && prev > 0) {
+      playCountdownGo()
+    }
+  }, [countdownValue, audioEnabled])
+
+  useEffect(() => {
+    const prev = prevShieldRef.current
+    prevShieldRef.current = shieldActive
+    if (!audioEnabled) return
+    if (prev && !shieldActive) {
+      playShieldBreak()
+    }
+  }, [shieldActive, audioEnabled])
+
+  useEffect(() => {
+    if (newAchievement && audioEnabled) {
+      playAchievement()
+    }
+  }, [newAchievement, audioEnabled])
 
   return (
     <div className="relative min-h-screen overflow-hidden px-4 py-6 sm:px-8 sm:py-8">
@@ -150,7 +195,7 @@ function App() {
         >
           {gameState === 'menu' && <CharacterSelection />}
           {gameState === 'levelSelect' && <LevelSelect />}
-          {(gameState === 'playing' || gameState === 'crashing') && (
+          {(gameState === 'playing' || gameState === 'crashing' || gameState === 'countdown' || gameState === 'paused') && (
             <GameScreen />
           )}
           {gameState === 'victory' && <VictoryScreen />}

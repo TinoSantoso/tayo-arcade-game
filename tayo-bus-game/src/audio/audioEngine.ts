@@ -133,3 +133,29 @@ export const playCrash = () => {
   playSweep(240, 60, 0.32, 0.18)
   playTone(90, 0.2, 'square', 0.06, 0.04)
 }
+
+export const playPowerUp = () => {
+  playTone(440, 0.1, 'triangle', 0.1)
+  playTone(660, 0.12, 'triangle', 0.1, 0.1)
+  playTone(880, 0.14, 'triangle', 0.1, 0.22)
+}
+
+export const playCountdownBeep = () => {
+  playTone(440, 0.12, 'square', 0.06)
+}
+
+export const playCountdownGo = () => {
+  playTone(880, 0.18, 'square', 0.1)
+}
+
+export const playShieldBreak = () => {
+  playSweep(800, 300, 0.2, 0.1)
+  playTone(200, 0.15, 'sawtooth', 0.04, 0.08)
+}
+
+export const playAchievement = () => {
+  playTone(523, 0.1, 'triangle', 0.1)
+  playTone(659, 0.1, 'triangle', 0.1, 0.12)
+  playTone(784, 0.1, 'triangle', 0.1, 0.24)
+  playTone(1047, 0.18, 'triangle', 0.12, 0.36)
+}

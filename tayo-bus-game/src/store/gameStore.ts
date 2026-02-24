@@ -5,7 +5,9 @@ import { levels, type ObstacleFrequency } from '../data/levels'
 export type GameState =
   | 'menu'
   | 'levelSelect'
+  | 'countdown'
   | 'playing'
+  | 'paused'
   | 'crashing'
   | 'victory'
   | 'gameOver'
@@ -17,13 +19,39 @@ export type Obstacle = {
   variant: 'motorcycle' | 'car' | 'truck'
 }
 
+export type PowerUpType = 'shield'
+
+export type PowerUp = {
+  id: number
+  lane: 0 | 1 | 2
+  y: number
+  type: PowerUpType
+}
+
 export type Difficulty = 'easy' | 'normal' | 'hard'
+
+export type AchievementDef = {
+  id: string
+  name: string
+  description: string
+  icon: string
+}
+
+export const ACHIEVEMENTS: AchievementDef[] = [
+  { id: 'first_win', name: 'First Win!', description: 'Complete any level', icon: '🏆' },
+  { id: 'perfect_dodge', name: 'Perfect Dodge', description: 'Avoid all obstacles in a level', icon: '✨' },
+  { id: 'triple_star', name: 'Triple Star', description: 'Get 3 stars on any level', icon: '⭐' },
+  { id: 'shield_save', name: 'Shield Saver', description: 'Block a collision with a shield', icon: '🛡️' },
+  { id: 'all_levels', name: 'Road Warrior', description: 'Complete all 6 levels', icon: '🗺️' },
+  { id: 'all_stars', name: 'Superstar', description: 'Get 3 stars on all levels', icon: '🌟' },
+]
 
 type RunStats = {
   timeElapsed: number
   obstaclesAvoided: number
   obstaclesSpawned: number
   stars: 1 | 2 | 3
+  shieldUsed: boolean
 }
 
 type BestStats = {
@@ -39,6 +67,7 @@ type PersistedProgress = {
   audioEnabled?: boolean
   difficulty?: Difficulty
   distanceProfileVersion?: number
+  unlockedAchievements?: string[]
 }
 
 type GameStore = {
@@ -66,6 +95,15 @@ type GameStore = {
   crashY: number | null
   lastRunStats: RunStats
   bestByLevel: Record<number, BestStats>
+  countdownValue: number
+  countdownTimer: number
+  powerUps: PowerUp[]
+  shieldActive: boolean
+  shieldUsed: boolean
+  nextPowerUpId: number
+  powerUpSpawnTimer: number
+  unlockedAchievements: string[]
+  newAchievement: string | null
   setGameState: (state: GameState) => void
   selectCharacter: (id: CharacterId) => void
   toggleAudio: () => void
@@ -75,6 +113,9 @@ type GameStore = {
   resetRun: () => void
   moveLeft: () => void
   moveRight: () => void
+  pause: () => void
+  resume: () => void
+  dismissAchievement: () => void
   tick: (deltaMs: number) => void
 }
 
@@ -95,6 +136,9 @@ const FINISH_LINE_HEIGHT = 48
 const LANES: Array<0 | 1 | 2> = [0, 1, 2]
 const CRASH_DURATION_MS = 600
 
+const COUNTDOWN_STEP_MS = 800
+const POWERUP_SIZE = 36
+const POWERUP_SPAWN_INTERVAL = 22
 const OBSTACLE_SIZES: Record<Obstacle['variant'], { height: number }> = {
   motorcycle: { height: 72 },
   car: { height: 90 },
@@ -124,6 +168,7 @@ const createRunStats = (overrides: Partial<RunStats> = {}): RunStats => ({
   obstaclesAvoided: 0,
   obstaclesSpawned: 0,
   stars: 1,
+  shieldUsed: false,
   ...overrides,
 })
 
@@ -227,6 +272,42 @@ const initialAudioEnabled =
     : true
 const initialDifficulty = initialProgress.difficulty ?? 'normal'
 const initialDifficultyConfig = getDifficultyConfig(initialDifficulty)
+const initialAchievements = initialProgress.unlockedAchievements ?? []
+
+const checkAchievements = (state: GameStore): string[] => {
+  const newly: string[] = []
+  const has = (id: string) => state.unlockedAchievements.includes(id)
+
+  if (!has('first_win')) {
+    newly.push('first_win')
+  }
+  if (
+    !has('perfect_dodge') &&
+    state.obstaclesSpawned > 0 &&
+    state.obstaclesAvoided >= state.obstaclesSpawned
+  ) {
+    newly.push('perfect_dodge')
+  }
+  if (!has('triple_star') && state.lastRunStats.stars === 3) {
+    newly.push('triple_star')
+  }
+  if (!has('shield_save') && state.shieldUsed) {
+    newly.push('shield_save')
+  }
+  if (!has('all_levels') && state.unlockedLevels > levels.length) {
+    newly.push('all_levels')
+  }
+  if (!has('all_stars')) {
+    const allThreeStars = levels.every((l) => {
+      const best = state.bestByLevel[l.id]
+      return best && best.bestStars >= 3
+    })
+    if (allThreeStars) {
+      newly.push('all_stars')
+    }
+  }
+  return newly
+}
 
 export const useGameStore = create<GameStore>((set, get) => ({
   gameState: 'menu',
@@ -254,6 +335,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
   crashY: null,
   lastRunStats: createRunStats(),
   bestByLevel: initialBestByLevel,
+  countdownValue: 0,
+  countdownTimer: 0,
+  powerUps: [],
+  shieldActive: false,
+  shieldUsed: false,
+  nextPowerUpId: 1,
+  powerUpSpawnTimer: POWERUP_SPAWN_INTERVAL,
+  unlockedAchievements: initialAchievements,
+  newAchievement: null,
   setGameState: (state) => set({ gameState: state }),
   selectCharacter: (id) => {
     set({ selectedCharacter: id })
@@ -318,7 +408,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({
       currentLevel: levelId,
-      gameState: 'playing',
+      gameState: 'countdown',
+      countdownValue: 3,
+      countdownTimer: COUNTDOWN_STEP_MS,
       playerLane: 1,
       distanceTraveled: 0,
       finishLineDistance,
@@ -336,6 +428,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       crashLane: null,
       crashY: null,
       lastRunStats: createRunStats(),
+      powerUps: [],
+      shieldActive: false,
+      shieldUsed: false,
+      nextPowerUpId: 1,
+      powerUpSpawnTimer: POWERUP_SPAWN_INTERVAL,
+      newAchievement: null,
     })
   },
   unlockNextLevel: () => {
@@ -362,7 +460,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const config = getDifficultyConfig(get().difficulty)
 
     set({
-      gameState: 'playing',
+      gameState: 'countdown',
+      countdownValue: 3,
+      countdownTimer: COUNTDOWN_STEP_MS,
       playerLane: 1,
       distanceTraveled: 0,
       finishLineDistance,
@@ -380,19 +480,49 @@ export const useGameStore = create<GameStore>((set, get) => ({
       crashLane: null,
       crashY: null,
       lastRunStats: createRunStats(),
+      powerUps: [],
+      shieldActive: false,
+      shieldUsed: false,
+      nextPowerUpId: 1,
+      powerUpSpawnTimer: POWERUP_SPAWN_INTERVAL,
+      newAchievement: null,
     })
   },
   moveLeft: () =>
     set((state) => ({ playerLane: Math.max(0, state.playerLane - 1) as 0 | 1 | 2 })),
   moveRight: () =>
     set((state) => ({ playerLane: Math.min(2, state.playerLane + 1) as 0 | 1 | 2 })),
+  pause: () =>
+    set((state) => (state.gameState === 'playing' ? { gameState: 'paused' } : {})),
+  resume: () =>
+    set((state) => (state.gameState === 'paused' ? { gameState: 'playing' } : {})),
+  dismissAchievement: () => set({ newAchievement: null }),
   tick: (deltaMs) =>
     set((state) => {
-      if (state.gameState !== 'playing' && state.gameState !== 'crashing') {
+      if (
+        state.gameState !== 'playing' &&
+        state.gameState !== 'crashing' &&
+        state.gameState !== 'countdown'
+      ) {
         return state
       }
 
       const clampedDeltaMs = Math.min(deltaMs, MAX_FRAME_DELTA_MS)
+
+      // --- Countdown ---
+      if (state.gameState === 'countdown') {
+        const nextTimer = state.countdownTimer - clampedDeltaMs
+        if (nextTimer <= 0) {
+          const nextValue = state.countdownValue - 1
+          if (nextValue <= 0) {
+            return { gameState: 'playing', countdownValue: 0, countdownTimer: 0 }
+          }
+          return { countdownValue: nextValue, countdownTimer: COUNTDOWN_STEP_MS }
+        }
+        return { countdownTimer: nextTimer }
+      }
+
+      // --- Crashing ---
       if (state.gameState === 'crashing') {
         const nextCrashTimer = Math.max(0, state.crashTimerMs - clampedDeltaMs)
         if (nextCrashTimer <= 0) {
@@ -409,6 +539,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       }
 
+      // --- Playing ---
       const levelCfg = levels.find((l) => l.id === state.currentLevel)
       const deltaSeconds = clampedDeltaMs / 1000
       const distanceDelta = state.speed * deltaSeconds
@@ -442,6 +573,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
           }
         })
         .filter((obstacle) => obstacle.y < 520)
+
+      // --- Move power-ups ---
+      let powerUps = state.powerUps
+        .map((pu) => ({ ...pu, y: pu.y + obstacleSpeed }))
+        .filter((pu) => pu.y < 520)
+      let shieldActive = state.shieldActive
+      let shieldUsed = state.shieldUsed
+      let nextPowerUpId = state.nextPowerUpId
+
+      // Collect power-ups
+      const uncollectedPowerUps: PowerUp[] = []
+      for (const pu of powerUps) {
+        if (
+          pu.lane === state.playerLane &&
+          pu.y + POWERUP_SIZE >= playerTop &&
+          pu.y <= playerBottom
+        ) {
+          if (pu.type === 'shield') {
+            shieldActive = true
+          }
+        } else {
+          uncollectedPowerUps.push(pu)
+        }
+      }
+      powerUps = uncollectedPowerUps
+
+      // --- Collision detection (with shield) ---
       const collidedObstacle = movedObstacles.find((obstacle) => {
         if (obstacle.lane !== state.playerLane) {
           return false
@@ -454,6 +612,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
       })
 
       if (collidedObstacle) {
+        if (shieldActive) {
+          // Shield absorbs the hit
+          const filteredObstacles = movedObstacles.filter(
+            (o) => o.id !== collidedObstacle.id
+          )
+          return {
+            ...state,
+            obstacles: filteredObstacles,
+            shieldActive: false,
+            shieldUsed: true,
+            obstaclesAvoided: state.obstaclesAvoided + newlyAvoided + 1,
+            powerUps,
+          }
+        }
         return {
           ...state,
           gameState: 'crashing',
@@ -462,6 +634,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           crashLane: collidedObstacle.lane,
           crashY: collidedObstacle.y,
           obstaclesAvoided: state.obstaclesAvoided + newlyAvoided,
+          powerUps,
         }
       }
 
@@ -491,6 +664,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           obstaclesAvoided: finalAvoided,
           obstaclesSpawned: totalSpawned,
           stars,
+          shieldUsed,
         })
         const prevBest = state.bestByLevel[state.currentLevel]
         const nextBest: BestStats = prevBest
@@ -509,17 +683,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
           [state.currentLevel]: nextBest,
         }
         const nextUnlocked = Math.max(state.unlockedLevels, state.currentLevel + 1)
-        saveProgress({
-          unlockedLevels: nextUnlocked,
-          selectedCharacter: state.selectedCharacter,
-          bestByLevel: nextBestByLevel,
-          audioEnabled: state.audioEnabled,
-          difficulty: state.difficulty,
-        })
 
-        return {
+        const victoryState = {
           ...state,
-          gameState: 'victory',
+          gameState: 'victory' as const,
           obstacles: movedObstacles,
           distanceTraveled,
           timeElapsed: finalTime,
@@ -529,9 +696,31 @@ export const useGameStore = create<GameStore>((set, get) => ({
           unlockedLevels: nextUnlocked,
           lastRunStats: runStats,
           bestByLevel: nextBestByLevel,
+          powerUps,
+          shieldUsed,
+        }
+
+        // Check achievements
+        const newlyUnlocked = checkAchievements(victoryState)
+        const allUnlocked = [...state.unlockedAchievements, ...newlyUnlocked]
+
+        saveProgress({
+          unlockedLevels: nextUnlocked,
+          selectedCharacter: state.selectedCharacter,
+          bestByLevel: nextBestByLevel,
+          audioEnabled: state.audioEnabled,
+          difficulty: state.difficulty,
+          unlockedAchievements: allUnlocked,
+        })
+
+        return {
+          ...victoryState,
+          unlockedAchievements: allUnlocked,
+          newAchievement: newlyUnlocked.length > 0 ? newlyUnlocked[0] : null,
         }
       }
 
+      // --- Spawn obstacles ---
       let spawnTimer = state.spawnTimer - deltaSeconds
       let obstacles = movedObstacles
       let nextObstacleId = state.nextObstacleId
@@ -580,6 +769,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       }
 
+      // --- Spawn power-ups ---
+      let powerUpSpawnTimer = state.powerUpSpawnTimer - deltaSeconds
+      if (canSpawn && powerUpSpawnTimer <= 0 && !shieldActive) {
+        const lane = LANES[Math.floor(Math.random() * LANES.length)]
+        powerUps = [
+          ...powerUps,
+          { id: nextPowerUpId, lane, y: -60, type: 'shield' },
+        ]
+        nextPowerUpId += 1
+        powerUpSpawnTimer = POWERUP_SPAWN_INTERVAL + (Math.random() - 0.5) * 8
+      }
+
       return {
         distanceTraveled,
         timeElapsed: state.timeElapsed + deltaSeconds,
@@ -590,6 +791,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
         nextObstacleId,
         obstaclesAvoided: state.obstaclesAvoided + newlyAvoided,
         obstaclesSpawned,
+        powerUps,
+        shieldActive,
+        shieldUsed,
+        nextPowerUpId,
+        powerUpSpawnTimer,
       }
     }),
 }))

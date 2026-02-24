@@ -1,7 +1,7 @@
 import type { TouchEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { playLaneChange } from '../audio/audioEngine'
+import { playLaneChange, playPowerUp } from '../audio/audioEngine'
 import carObstacle from '../assets/obstacles/car.svg'
 import motorcycleObstacle from '../assets/obstacles/motorcycle.svg'
 import truckObstacle from '../assets/obstacles/truck.svg'
@@ -30,6 +30,12 @@ const GameScreen = () => {
     crashTimerMs,
     crashLane,
     crashY,
+    countdownValue,
+    powerUps,
+    shieldActive,
+    pause,
+    resume,
+    setGameState,
   } = useGameStore(
     useShallow((state) => ({
       currentLevel: state.currentLevel,
@@ -51,6 +57,12 @@ const GameScreen = () => {
       crashTimerMs: state.crashTimerMs,
       crashLane: state.crashLane,
       crashY: state.crashY,
+      countdownValue: state.countdownValue,
+      powerUps: state.powerUps,
+      shieldActive: state.shieldActive,
+      pause: state.pause,
+      resume: state.resume,
+      setGameState: state.setGameState,
     }))
   )
 
@@ -108,8 +120,14 @@ const GameScreen = () => {
   const busRotation = '180deg'
   const busShadow = '0 12px 20px rgba(15, 23, 42, 0.28)'
   const isCrashing = gameState === 'crashing'
-  const raceActive = gameState === 'playing' || isCrashing
+  const raceActive = gameState === 'playing' || isCrashing || gameState === 'countdown'
   const visibleTurnSignal = gameState === 'playing' ? turnSignal : null
+
+  const prevShieldActive = useRef(shieldActive)
+
+  const vibrate = useCallback((ms: number) => {
+    try { navigator?.vibrate?.(ms) } catch {}
+  }, [])
   const crashFocusLane = crashLane ?? playerLane
   const crashFocusY =
     crashY === null ? 248 : Math.max(60, Math.min(334, crashY + 62))
@@ -131,9 +149,10 @@ const GameScreen = () => {
     }
     if (playerLane > 0) {
       flashTurnSignal('left')
+      vibrate(50)
     }
     moveLeft()
-  }, [flashTurnSignal, gameState, moveLeft, playerLane])
+  }, [flashTurnSignal, gameState, moveLeft, playerLane, vibrate])
 
   const handleMoveRight = useCallback(() => {
     if (gameState !== 'playing') {
@@ -141,9 +160,10 @@ const GameScreen = () => {
     }
     if (playerLane < 2) {
       flashTurnSignal('right')
+      vibrate(50)
     }
     moveRight()
-  }, [flashTurnSignal, gameState, moveRight, playerLane])
+  }, [flashTurnSignal, gameState, moveRight, playerLane, vibrate])
 
   useEffect(() => {
     return () => {
@@ -176,6 +196,21 @@ const GameScreen = () => {
   }, [audioEnabled, gameState, playerLane])
 
   useEffect(() => {
+    if (isCrashing) {
+      vibrate(200)
+    }
+  }, [isCrashing, vibrate])
+
+  useEffect(() => {
+    if (shieldActive && !prevShieldActive.current) {
+      if (audioEnabled) {
+        playPowerUp()
+      }
+    }
+    prevShieldActive.current = shieldActive
+  }, [audioEnabled, shieldActive])
+
+  useEffect(() => {
     if (!raceActive) {
       return
     }
@@ -201,6 +236,16 @@ const GameScreen = () => {
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' || event.key === 'p') {
+        event.preventDefault()
+        if (gameState === 'playing') {
+          pause()
+        } else if (gameState === 'paused') {
+          resume()
+        }
+        return
+      }
+
       if (gameState !== 'playing') {
         return
       }
@@ -217,7 +262,7 @@ const GameScreen = () => {
 
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [gameState, handleMoveLeft, handleMoveRight])
+  }, [gameState, handleMoveLeft, handleMoveRight, pause, resume])
 
   const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
     if (gameState !== 'playing') {
@@ -272,8 +317,8 @@ const GameScreen = () => {
   }
 
   return (
-    <section className="space-y-4 animate-fade-up">
-      <header className="kid-route-header">
+    <section className="space-y-4 animate-fade-up" aria-label={`Level ${currentLevel} gameplay`}>
+      <header className="kid-route-header" aria-label="Level progress">
         <div className="flex items-center gap-3">
           <span className="kid-level-bubble" style={{ background: theme.accent }}>
             <span className="text-2xl">{level?.theme.envIcon ?? '🚌'}</span>
@@ -286,7 +331,7 @@ const GameScreen = () => {
           </div>
         </div>
         <div className="kid-progress-strip">
-          <div className="kid-progress-track">
+          <div className="kid-progress-track" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100} aria-label={`Level progress: ${progressPercent}%`}>
             <div
               className="kid-progress-fill"
               style={{ width: `${progressPercent}%`, background: `linear-gradient(90deg, ${theme.accent}, ${theme.accent}dd)` }}
@@ -300,10 +345,21 @@ const GameScreen = () => {
         </div>
       </header>
 
-      <div className={`kid-road-frame ${isCrashing ? 'kid-warning-shake' : ''}`}>
+      <div className={`kid-road-frame ${isCrashing ? 'kid-warning-shake crash-screen-shake' : ''}`}>
         <div className="kid-road-info">
           <span className="kid-speed-badge" style={{ background: theme.accent }}>⚡ {Math.round(speed)}</span>
           <span className="kid-traffic-badge">🚗 {level?.obstacleFrequency === 'high' ? 'Busy!' : level?.obstacleFrequency === 'medium' ? 'Watch out!' : 'Easy!'}</span>
+          {gameState === 'playing' && (
+            <button
+              type="button"
+              onClick={pause}
+              className="kid-speed-badge"
+              style={{ background: '#64748b', cursor: 'pointer' }}
+              aria-label="Pause game"
+            >
+              ⏸️ Pause
+            </button>
+          )}
         </div>
 
         <div
@@ -399,6 +455,23 @@ const GameScreen = () => {
             </div>
           </div>
 
+          {speed > 60 && (
+            <div className="pointer-events-none absolute inset-0 overflow-hidden z-[4]">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={`speed-line-${i}`}
+                  className="speed-line"
+                  style={{
+                    left: `${8 + i * 17}%`,
+                    height: `${40 + (i % 3) * 20}px`,
+                    animationDelay: `${i * 50}ms`,
+                    animationDuration: `${200 + (i % 2) * 100}ms`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
           <div className="relative h-[430px]">
             {finishLineVisible && finishLineY !== null && (
               <div
@@ -434,6 +507,20 @@ const GameScreen = () => {
                 </div>
               )
             })}
+
+            {powerUps.map((pu) => (
+              <div
+                key={`pu-${pu.id}`}
+                className="absolute"
+                style={{
+                  left: lanePositions[pu.lane],
+                  top: pu.y,
+                  transform: 'translateX(-50%)',
+                }}
+              >
+                <div className="game-powerup-shield">🛡️</div>
+              </div>
+            ))}
 
             {isCrashing && (
               <>
@@ -497,12 +584,38 @@ const GameScreen = () => {
                 className="sparkle -top-2 right-6 h-2.5 w-2.5 bg-white/70"
                 style={{ animationDelay: '520ms' }}
               />
+              {shieldActive && <span className="shield-active-glow" />}
             </div>
+
           </div>
+
+          {gameState === 'countdown' && (
+            <div className="countdown-overlay">
+              <span key={countdownValue} className={countdownValue > 0 ? 'countdown-number' : 'countdown-go'}>
+                {countdownValue > 0 ? countdownValue : 'GO!'}
+              </span>
+            </div>
+          )}
+
+          {gameState === 'paused' && (
+            <div className="pause-overlay">
+              <span className="pause-title">⏸️ Paused</span>
+              <button type="button" onClick={resume} className="pause-btn pause-btn-resume">
+                ▶️ Resume
+              </button>
+              <button
+                type="button"
+                onClick={() => setGameState('levelSelect')}
+                className="pause-btn pause-btn-quit"
+              >
+                🚪 Quit to Menu
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="kid-dashboard">
+      <div className="kid-dashboard" role="status" aria-label="Game stats and controls">
         <div className="kid-stats-row">
           <div className="kid-stat-bubble" style={{ borderColor: theme.accent }}>
             <span className="text-2xl">⚡</span>
@@ -540,6 +653,7 @@ const GameScreen = () => {
             onClick={handleMoveLeft}
             disabled={isCrashing}
             className="kid-drive-btn kid-drive-btn-left"
+            aria-label="Move left"
           >
             <span className="kid-drive-arrow">👈</span>
           </button>
@@ -553,6 +667,7 @@ const GameScreen = () => {
             onClick={handleMoveRight}
             disabled={isCrashing}
             className="kid-drive-btn kid-drive-btn-right"
+            aria-label="Move right"
           >
             <span className="kid-drive-arrow">👉</span>
           </button>

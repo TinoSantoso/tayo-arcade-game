@@ -1,11 +1,12 @@
 import { levels } from '../data/levels'
-import { useGameStore } from '../store/gameStore'
+import { ACHIEVEMENTS, useGameStore } from '../store/gameStore'
 
 const LevelSelect = () => {
   const unlockedLevels = useGameStore((state) => state.unlockedLevels)
   const bestByLevel = useGameStore((state) => state.bestByLevel)
   const startLevel = useGameStore((state) => state.startLevel)
   const setGameState = useGameStore((state) => state.setGameState)
+  const unlockedAchievements = useGameStore((state) => state.unlockedAchievements)
 
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60)
@@ -28,6 +29,9 @@ const LevelSelect = () => {
           <p className="mt-2 max-w-xl text-sm text-slate-600 sm:text-base">
             Each level gets longer and faster. Clear one to unlock the next.
           </p>
+          <div className="flex gap-3 text-sm text-slate-500">
+            <span>🏆 {unlockedAchievements.length}/{ACHIEVEMENTS.length} achievements</span>
+          </div>
         </div>
         <button
           type="button"

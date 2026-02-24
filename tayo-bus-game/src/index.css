@@ -1119,6 +1119,184 @@ body {
     drop-shadow(0 10px 14px rgba(15, 23, 42, 0.3));
 }
 
+/* ===== COUNTDOWN OVERLAY ===== */
+
+.countdown-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.countdown-number {
+  font-size: 5rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  animation: countdown-pop 800ms ease-out;
+}
+
+.countdown-go {
+  font-size: 4rem;
+  font-weight: 900;
+  color: #22c55e;
+  text-shadow: 0 4px 20px rgba(34, 197, 94, 0.5);
+  animation: countdown-pop 400ms ease-out;
+}
+
+@keyframes countdown-pop {
+  0% { transform: scale(2); opacity: 0; }
+  40% { transform: scale(0.9); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ===== PAUSE OVERLAY ===== */
+
+.pause-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+}
+
+.pause-title {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.pause-btn {
+  padding: 0.75rem 2.5rem;
+  border-radius: 999px;
+  border: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+.pause-btn:active {
+  transform: scale(0.95);
+}
+
+.pause-btn-resume {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  box-shadow: 0 6px 0 #15803d, 0 10px 20px rgba(22, 163, 74, 0.3);
+}
+
+.pause-btn-quit {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+
+/* ===== SPEED LINES ===== */
+
+.speed-line {
+  position: absolute;
+  width: 2px;
+  border-radius: 1px;
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 100%);
+  animation: speed-line-flow 300ms linear infinite;
+  pointer-events: none;
+}
+
+@keyframes speed-line-flow {
+  0% { transform: translateY(-100%); opacity: 0; }
+  20% { opacity: 0.6; }
+  100% { transform: translateY(500px); opacity: 0; }
+}
+
+/* ===== POWER-UP (SHIELD) ===== */
+
+.game-powerup-shield {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 40% 35%, #bfdbfe 0%, #3b82f6 50%, #1d4ed8 100%);
+  border: 3px solid #1e40af;
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.5), 0 3px 8px rgba(29, 78, 216, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  animation: powerup-pulse 1s ease-in-out infinite;
+}
+
+@keyframes powerup-pulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(59, 130, 246, 0.5), 0 3px 8px rgba(29, 78, 216, 0.4); transform: scale(1); }
+  50% { box-shadow: 0 0 24px rgba(59, 130, 246, 0.8), 0 3px 12px rgba(29, 78, 216, 0.6); transform: scale(1.1); }
+}
+
+/* ===== SHIELD ACTIVE INDICATOR ===== */
+
+.shield-active-glow {
+  position: absolute;
+  inset: -8px;
+  border-radius: 1rem;
+  border: 3px solid rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+  animation: shield-glow 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes shield-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; border-color: rgba(59, 130, 246, 0.9); }
+}
+
+.shield-break {
+  animation: shield-break 400ms ease-out forwards;
+}
+
+@keyframes shield-break {
+  0% { transform: scale(1); opacity: 1; border-color: rgba(59, 130, 246, 0.9); }
+  50% { transform: scale(1.5); opacity: 0.5; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+/* ===== ACHIEVEMENT TOAST ===== */
+
+.achievement-toast {
+  animation: achievement-slide-in 500ms ease-out;
+}
+
+@keyframes achievement-slide-in {
+  0% { transform: translateY(-20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* ===== SCREEN SHAKE ON CRASH ===== */
+
+.crash-screen-shake {
+  animation: crash-screen-shake 400ms ease-in-out;
+}
+
+@keyframes crash-screen-shake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-4px, 2px); }
+  20% { transform: translate(4px, -2px); }
+  30% { transform: translate(-3px, -3px); }
+  40% { transform: translate(3px, 3px); }
+  50% { transform: translate(-2px, 1px); }
+  60% { transform: translate(2px, -1px); }
+  70% { transform: translate(-1px, 2px); }
+  80% { transform: translate(1px, -1px); }
+  90% { transform: translate(-1px, 0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
   .lane-dash-flow,
@@ -1141,7 +1319,15 @@ body {
   .kid-crash-pop,
   .kid-bounce,
   .kid-crash-shake,
-  .kid-warning-shake {
+  .kid-warning-shake,
+  .countdown-number,
+  .countdown-go,
+  .speed-line,
+  .game-powerup-shield,
+  .shield-active-glow,
+  .shield-break,
+  .achievement-toast,
+  .crash-screen-shake {
     animation: none !important;
   }
 }

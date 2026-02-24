@@ -40,6 +40,7 @@ const GameOverScreen = () => {
           <p className="mt-1 text-sm text-slate-500">
             {Math.round(distanceTraveled)}m / {finishLineDistance}m
           </p>
+
         </div>
       </div>
 
