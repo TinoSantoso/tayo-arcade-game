@@ -14,18 +14,12 @@ export type GameState =
 
 export type Obstacle = {
   id: number
-  lane: 0 | 1 | 2
+  x: number
   y: number
-  variant: 'motorcycle' | 'car' | 'truck'
-}
-
-export type PowerUpType = 'shield'
-
-export type PowerUp = {
-  id: number
-  lane: 0 | 1 | 2
-  y: number
-  type: PowerUpType
+  variant: 'yellow_car' | 'red_car' | 'blue_car' | 'truck' | 'fuel_car' | 'oil_slick'
+  speed: number
+  hasActed: boolean
+  swerveTargetX: number | null
 }
 
 export type Difficulty = 'easy' | 'normal' | 'hard'
@@ -38,26 +32,29 @@ export type AchievementDef = {
 }
 
 export const ACHIEVEMENTS: AchievementDef[] = [
-  { id: 'first_win', name: 'First Win!', description: 'Complete any level', icon: '🏆' },
-  { id: 'perfect_dodge', name: 'Perfect Dodge', description: 'Avoid all obstacles in a level', icon: '✨' },
-  { id: 'triple_star', name: 'Triple Star', description: 'Get 3 stars on any level', icon: '⭐' },
-  { id: 'shield_save', name: 'Shield Saver', description: 'Block a collision with a shield', icon: '🛡️' },
-  { id: 'all_levels', name: 'Road Warrior', description: 'Complete all 6 levels', icon: '🗺️' },
-  { id: 'all_stars', name: 'Superstar', description: 'Get 3 stars on all levels', icon: '🌟' },
+  { id: 'first_win', name: 'First Win!', description: 'Complete any stage', icon: '🏆' },
+  { id: 'fuel_master', name: 'Fuel Master', description: 'Finish a stage with 50%+ fuel', icon: '⛽' },
+  { id: 'triple_star', name: 'Triple Star', description: 'Get 3 stars on any stage', icon: '⭐' },
+  { id: 'no_spin', name: 'Steady Driver', description: 'Complete a stage without spinning out', icon: '🎯' },
+  { id: 'all_levels', name: 'Road Warrior', description: 'Complete all 6 stages', icon: '🗺️' },
+  { id: 'all_stars', name: 'Superstar', description: 'Get 3 stars on all stages', icon: '🌟' },
 ]
 
 type RunStats = {
   timeElapsed: number
   obstaclesAvoided: number
   obstaclesSpawned: number
+  score: number
+  fuelRemaining: number
   stars: 1 | 2 | 3
-  shieldUsed: boolean
+  spinCount: number
 }
 
 type BestStats = {
   bestTime: number
   bestStars: number
   bestAvoided: number
+  bestScore: number
 }
 
 type PersistedProgress = {
@@ -68,6 +65,7 @@ type PersistedProgress = {
   difficulty?: Difficulty
   distanceProfileVersion?: number
   unlockedAchievements?: string[]
+  bestEndlessDistance?: number
 }
 
 type GameStore = {
@@ -77,7 +75,14 @@ type GameStore = {
   unlockedLevels: number
   audioEnabled: boolean
   difficulty: Difficulty
-  playerLane: 0 | 1 | 2
+  playerX: number
+  fuel: number
+  maxFuel: number
+  isSpinning: boolean
+  spinTimer: number
+  spinCount: number
+  isBoosting: boolean
+  score: number
   distanceTraveled: number
   finishLineDistance: number
   finishLineVisible: boolean
@@ -91,31 +96,36 @@ type GameStore = {
   obstaclesAvoided: number
   obstaclesSpawned: number
   crashTimerMs: number
-  crashLane: 0 | 1 | 2 | null
   crashY: number | null
   lastRunStats: RunStats
   bestByLevel: Record<number, BestStats>
   countdownValue: number
   countdownTimer: number
-  powerUps: PowerUp[]
-  shieldActive: boolean
-  shieldUsed: boolean
-  nextPowerUpId: number
-  powerUpSpawnTimer: number
+  fuelCarSpawnTimer: number
+  oilSlickSpawnTimer: number
+  roadCurveOffset: number
+  roadCurveTarget: number
+  curveChangeTimer: number
+  isEndless: boolean
+  bestEndlessDistance: number
   unlockedAchievements: string[]
   newAchievement: string | null
+  playfieldWidth: number
   setGameState: (state: GameState) => void
+  setPlayfieldWidth: (width: number) => void
   selectCharacter: (id: CharacterId) => void
   toggleAudio: () => void
   setDifficulty: (difficulty: Difficulty) => void
   startLevel: (levelId: number) => void
   unlockNextLevel: () => void
   resetRun: () => void
-  moveLeft: () => void
-  moveRight: () => void
+  steerLeft: (deltaSeconds: number) => void
+  steerRight: (deltaSeconds: number) => void
+  setBoost: (active: boolean) => void
   pause: () => void
   resume: () => void
   dismissAchievement: () => void
+  startEndless: () => void
   tick: (deltaMs: number) => void
 }
 
@@ -129,21 +139,41 @@ const PLAYER_Y = PLAYFIELD_HEIGHT - PLAYER_BOTTOM_OFFSET - PLAYER_HEIGHT
 const FINISH_VISIBLE_DISTANCE = 200
 const MAX_FRAME_DELTA_MS = 80
 const STORAGE_KEY = 'tayo-bus-progress-v1'
-const DISTANCE_PROFILE_VERSION = 2
-const PLAYER_HITBOX = { top: 0.02, bottom: 0.98 }
-const OBSTACLE_HITBOX = { top: 0.02, bottom: 0.98 }
+const DISTANCE_PROFILE_VERSION = 3
+const PLAYER_HITBOX_TOP = 0.02
+const PLAYER_HITBOX_BOTTOM = 0.98
 const FINISH_LINE_HEIGHT = 48
-const LANES: Array<0 | 1 | 2> = [0, 1, 2]
 const CRASH_DURATION_MS = 600
-
 const COUNTDOWN_STEP_MS = 800
-const POWERUP_SIZE = 36
-const POWERUP_SPAWN_INTERVAL = 22
-const OBSTACLE_SIZES: Record<Obstacle['variant'], { height: number }> = {
-  motorcycle: { height: 72 },
-  car: { height: 90 },
-  truck: { height: 130 },
+const ENDLESS_SPEED_RAMP = 0.35
+
+const PLAYER_VISUAL_WIDTH_PX = 58
+const OBSTACLE_VISUAL_WIDTHS_PX: Record<Obstacle['variant'], number> = {
+  yellow_car: 46,
+  red_car: 46,
+  blue_car: 50,
+  truck: 56,
+  fuel_car: 42,
+  oil_slick: 60,
 }
+const BODY_INSET_PX = 6
+const SWERVE_SPEED = 22
+const OBSTACLE_HEIGHTS: Record<Obstacle['variant'], number> = {
+  yellow_car: 90,
+  red_car: 90,
+  blue_car: 90,
+  truck: 130,
+  fuel_car: 80,
+  oil_slick: 30,
+}
+const FUEL_LOSS_COLLISION = 6
+const FUEL_LOSS_WALL = 4
+const FUEL_GAIN_PICKUP = 15
+const SPIN_DURATION_COLLISION = 800
+const SPIN_DURATION_OIL = 600
+const WALL_MIN_X = 12
+const WALL_MAX_X = 88
+const STEER_SPEED = 40
 
 const SPEED_MULTIPLIER_BY_DIFFICULTY: Record<Difficulty, number> = {
   easy: 0.85,
@@ -157,47 +187,30 @@ const SPAWN_COOLDOWN_BY_DIFFICULTY: Record<Difficulty, number> = {
   hard: 1.1,
 }
 
-const LANE_CLEAR_THRESHOLD_BY_DIFFICULTY: Record<Difficulty, number> = {
-  easy: 400,
-  normal: 340,
-  hard: 260,
-}
-
 const createRunStats = (overrides: Partial<RunStats> = {}): RunStats => ({
   timeElapsed: 0,
   obstaclesAvoided: 0,
   obstaclesSpawned: 0,
+  score: 0,
+  fuelRemaining: 100,
   stars: 1,
-  shieldUsed: false,
+  spinCount: 0,
   ...overrides,
 })
 
 const loadProgress = (): Partial<PersistedProgress> => {
-  if (typeof window === 'undefined') {
-    return {}
-  }
-
+  if (typeof window === 'undefined') return {}
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) {
-      return {}
-    }
+    if (!raw) return {}
     const parsed = JSON.parse(raw) as Partial<PersistedProgress>
-    const storedVersion =
-      typeof parsed.distanceProfileVersion === 'number'
-        ? parsed.distanceProfileVersion
-        : 1
-
-    if (storedVersion >= DISTANCE_PROFILE_VERSION) {
-      return parsed
-    }
-
+    const storedVersion = typeof parsed.distanceProfileVersion === 'number' ? parsed.distanceProfileVersion : 1
+    if (storedVersion >= DISTANCE_PROFILE_VERSION) return parsed
     const migrated: Partial<PersistedProgress> = {
       ...parsed,
       bestByLevel: {},
       distanceProfileVersion: DISTANCE_PROFILE_VERSION,
     }
-
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated))
     return migrated
   } catch {
@@ -206,107 +219,127 @@ const loadProgress = (): Partial<PersistedProgress> => {
 }
 
 const saveProgress = (progress: PersistedProgress) => {
-  if (typeof window === 'undefined') {
-    return
-  }
-
+  if (typeof window === 'undefined') return
   try {
     window.localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({
-        ...progress,
-        distanceProfileVersion: DISTANCE_PROFILE_VERSION,
-      })
+      JSON.stringify({ ...progress, distanceProfileVersion: DISTANCE_PROFILE_VERSION })
     )
   } catch {
-    // Ignore storage errors (e.g. private mode).
+    // Ignore
   }
 }
 
-const computeStars = (timeElapsed: number, parTime: number, avoidedRate: number) => {
-  if (timeElapsed <= parTime * 1.1 && avoidedRate >= 0.85) {
-    return 3 as const
-  }
-  if (timeElapsed <= parTime * 1.35 && avoidedRate >= 0.6) {
-    return 2 as const
-  }
+const computeStars = (score: number, fuelRemaining: number, timeElapsed: number, parTime: number) => {
+  const fuelBonus = fuelRemaining / 100
+  if (timeElapsed <= parTime * 1.1 && fuelBonus >= 0.4) return 3 as const
+  if (timeElapsed <= parTime * 1.35 && fuelBonus >= 0.2) return 2 as const
   return 1 as const
 }
 
 const getSpawnInterval = (frequency: ObstacleFrequency) => {
   switch (frequency) {
-    case 'high':
-      return 1.2
-    case 'medium':
-      return 1.6
-    default:
-      return 2.1
+    case 'high': return 1.2
+    case 'medium': return 1.6
+    default: return 2.1
   }
 }
 
 const getDifficultyConfig = (difficulty: Difficulty) => ({
-  speed:
-    SPEED_MULTIPLIER_BY_DIFFICULTY[difficulty] ??
-    SPEED_MULTIPLIER_BY_DIFFICULTY.normal,
-  spawn:
-    SPAWN_COOLDOWN_BY_DIFFICULTY[difficulty] ??
-    SPAWN_COOLDOWN_BY_DIFFICULTY.normal,
+  speed: SPEED_MULTIPLIER_BY_DIFFICULTY[difficulty] ?? SPEED_MULTIPLIER_BY_DIFFICULTY.normal,
+  spawn: SPAWN_COOLDOWN_BY_DIFFICULTY[difficulty] ?? SPAWN_COOLDOWN_BY_DIFFICULTY.normal,
 })
-const getSpawnCooldown = (
-  frequency: ObstacleFrequency,
-  difficulty: Difficulty
-) => getSpawnInterval(frequency) * getDifficultyConfig(difficulty).spawn
+
+const getSpawnCooldown = (frequency: ObstacleFrequency, difficulty: Difficulty) =>
+  getSpawnInterval(frequency) * getDifficultyConfig(difficulty).spawn
 
 const characterIds: CharacterId[] = ['tayo', 'gani', 'lani', 'rogi']
 const initialProgress = loadProgress()
 const initialSelected =
-  initialProgress.selectedCharacter &&
-  characterIds.includes(initialProgress.selectedCharacter)
+  initialProgress.selectedCharacter && characterIds.includes(initialProgress.selectedCharacter)
     ? initialProgress.selectedCharacter
     : 'tayo'
 const initialUnlocked = Math.max(1, initialProgress.unlockedLevels ?? 1)
 const initialBestByLevel = initialProgress.bestByLevel ?? {}
-const initialAudioEnabled =
-  typeof initialProgress.audioEnabled === 'boolean'
-    ? initialProgress.audioEnabled
-    : true
+const initialAudioEnabled = typeof initialProgress.audioEnabled === 'boolean' ? initialProgress.audioEnabled : true
 const initialDifficulty = initialProgress.difficulty ?? 'normal'
 const initialDifficultyConfig = getDifficultyConfig(initialDifficulty)
 const initialAchievements = initialProgress.unlockedAchievements ?? []
+const initialBestEndless = initialProgress.bestEndlessDistance ?? 0
 
 const checkAchievements = (state: GameStore): string[] => {
   const newly: string[] = []
   const has = (id: string) => state.unlockedAchievements.includes(id)
 
-  if (!has('first_win')) {
-    newly.push('first_win')
-  }
-  if (
-    !has('perfect_dodge') &&
-    state.obstaclesSpawned > 0 &&
-    state.obstaclesAvoided >= state.obstaclesSpawned
-  ) {
-    newly.push('perfect_dodge')
-  }
-  if (!has('triple_star') && state.lastRunStats.stars === 3) {
-    newly.push('triple_star')
-  }
-  if (!has('shield_save') && state.shieldUsed) {
-    newly.push('shield_save')
-  }
-  if (!has('all_levels') && state.unlockedLevels > levels.length) {
-    newly.push('all_levels')
-  }
+  if (!has('first_win')) newly.push('first_win')
+  if (!has('fuel_master') && state.fuel >= 50) newly.push('fuel_master')
+  if (!has('triple_star') && state.lastRunStats.stars === 3) newly.push('triple_star')
+  if (!has('no_spin') && state.spinCount === 0) newly.push('no_spin')
+  if (!has('all_levels') && state.unlockedLevels > levels.length) newly.push('all_levels')
   if (!has('all_stars')) {
     const allThreeStars = levels.every((l) => {
       const best = state.bestByLevel[l.id]
       return best && best.bestStars >= 3
     })
-    if (allThreeStars) {
-      newly.push('all_stars')
-    }
+    if (allThreeStars) newly.push('all_stars')
   }
   return newly
+}
+
+const randomObstacleSpeed = (variant: Obstacle['variant']): number => {
+  switch (variant) {
+    case 'yellow_car': return 0.7 + Math.random() * 0.2
+    case 'red_car': return 0.75 + Math.random() * 0.2
+    case 'blue_car': return 0.8 + Math.random() * 0.2
+    case 'truck': return 0.5 + Math.random() * 0.2
+    case 'fuel_car': return 0.6
+    case 'oil_slick': return 1.0
+  }
+}
+
+const initLevel = (levelId: number, difficulty: Difficulty, isEndless: boolean) => {
+  const level = levels.find((l) => l.id === levelId)
+  const baseSpeed = level?.baseSpeed ?? 3
+  const finishLineDistance = isEndless ? 999999 : (level?.distance ?? 800)
+  const obstacleFrequency = level?.obstacleFrequency ?? 'low'
+  const config = getDifficultyConfig(difficulty)
+
+  return {
+    currentLevel: levelId,
+    gameState: 'countdown' as const,
+    countdownValue: 3,
+    countdownTimer: COUNTDOWN_STEP_MS,
+    playerX: 50,
+    fuel: 100,
+    maxFuel: 100,
+    isSpinning: false,
+    spinTimer: 0,
+    spinCount: 0,
+    isBoosting: false,
+    score: 0,
+    distanceTraveled: 0,
+    finishLineDistance,
+    finishLineVisible: false,
+    finishLineY: null as number | null,
+    timeElapsed: 0,
+    speed: baseSpeed * SPEED_MULTIPLIER * config.speed,
+    obstacles: [] as Obstacle[],
+    obstacleFrequency,
+    spawnTimer: getSpawnCooldown(obstacleFrequency, difficulty),
+    nextObstacleId: 1,
+    obstaclesAvoided: 0,
+    obstaclesSpawned: 0,
+    crashTimerMs: 0,
+    crashY: null as number | null,
+    lastRunStats: createRunStats(),
+    fuelCarSpawnTimer: level?.fuelCarFrequency ?? 8,
+    oilSlickSpawnTimer: level?.oilSlickFrequency ?? 0,
+    roadCurveOffset: 0,
+    roadCurveTarget: 0,
+    curveChangeTimer: 3 + Math.random() * 3,
+    isEndless,
+    newAchievement: null as string | null,
+  }
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -316,35 +349,46 @@ export const useGameStore = create<GameStore>((set, get) => ({
   unlockedLevels: initialUnlocked,
   audioEnabled: initialAudioEnabled,
   difficulty: initialDifficulty,
-  playerLane: 1,
+  playerX: 50,
+  fuel: 100,
+  maxFuel: 100,
+  isSpinning: false,
+  spinTimer: 0,
+  spinCount: 0,
+  isBoosting: false,
+  score: 0,
   distanceTraveled: 0,
-  finishLineDistance: levels[0]?.distance ?? 500,
+  finishLineDistance: levels[0]?.distance ?? 800,
   finishLineVisible: false,
   finishLineY: null,
   timeElapsed: 0,
   speed: (levels[0]?.baseSpeed ?? 3) * SPEED_MULTIPLIER * initialDifficultyConfig.speed,
   obstacles: [],
   obstacleFrequency: levels[0]?.obstacleFrequency ?? 'low',
-  spawnTimer:
-    getSpawnCooldown(levels[0]?.obstacleFrequency ?? 'low', initialDifficulty),
+  spawnTimer: getSpawnCooldown(levels[0]?.obstacleFrequency ?? 'low', initialDifficulty),
   nextObstacleId: 1,
   obstaclesAvoided: 0,
   obstaclesSpawned: 0,
   crashTimerMs: 0,
-  crashLane: null,
   crashY: null,
   lastRunStats: createRunStats(),
   bestByLevel: initialBestByLevel,
   countdownValue: 0,
   countdownTimer: 0,
-  powerUps: [],
-  shieldActive: false,
-  shieldUsed: false,
-  nextPowerUpId: 1,
-  powerUpSpawnTimer: POWERUP_SPAWN_INTERVAL,
+  fuelCarSpawnTimer: levels[0]?.fuelCarFrequency ?? 8,
+  oilSlickSpawnTimer: levels[0]?.oilSlickFrequency ?? 0,
+  roadCurveOffset: 0,
+  roadCurveTarget: 0,
+  curveChangeTimer: 5,
+  isEndless: false,
+  bestEndlessDistance: initialBestEndless,
   unlockedAchievements: initialAchievements,
   newAchievement: null,
+  playfieldWidth: 400,
+
   setGameState: (state) => set({ gameState: state }),
+  setPlayfieldWidth: (width) => set({ playfieldWidth: width }),
+
   selectCharacter: (id) => {
     set({ selectedCharacter: id })
     const state = get()
@@ -356,6 +400,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       difficulty: state.difficulty,
     })
   },
+
   toggleAudio: () =>
     set((state) => {
       const nextEnabled = !state.audioEnabled
@@ -368,27 +413,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
       })
       return { audioEnabled: nextEnabled }
     }),
+
   setDifficulty: (difficulty) =>
     set((state) => {
-      const level = levels.find((entry) => entry.id === state.currentLevel)
+      const level = levels.find((l) => l.id === state.currentLevel)
       const baseSpeed = level?.baseSpeed ?? 3
+      const maxSpeed = level?.maxSpeed ?? 5
       const config = getDifficultyConfig(difficulty)
-      const updates: Partial<GameStore> = {
-        difficulty,
-      }
+      const updates: Partial<GameStore> = { difficulty }
       if (state.gameState === 'playing') {
-        const currentCooldown = getSpawnCooldown(
-          state.obstacleFrequency,
-          state.difficulty
-        )
-        const nextCooldown = getSpawnCooldown(state.obstacleFrequency, difficulty)
-        const cooldownRatio =
-          currentCooldown > 0 ? state.spawnTimer / currentCooldown : 1
-        updates.speed = baseSpeed * SPEED_MULTIPLIER * config.speed
-        updates.spawnTimer = Math.max(
-          0.08,
-          Math.min(nextCooldown, cooldownRatio * nextCooldown)
-        )
+        updates.speed = (state.isBoosting ? maxSpeed : baseSpeed) * SPEED_MULTIPLIER * config.speed
       }
       saveProgress({
         unlockedLevels: state.unlockedLevels,
@@ -399,43 +433,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       })
       return updates
     }),
-  startLevel: (levelId) => {
-    const level = levels.find((entry) => entry.id === levelId)
-    const baseSpeed = level?.baseSpeed ?? 3
-    const finishLineDistance = level?.distance ?? 500
-    const obstacleFrequency = level?.obstacleFrequency ?? 'low'
-    const config = getDifficultyConfig(get().difficulty)
 
-    set({
-      currentLevel: levelId,
-      gameState: 'countdown',
-      countdownValue: 3,
-      countdownTimer: COUNTDOWN_STEP_MS,
-      playerLane: 1,
-      distanceTraveled: 0,
-      finishLineDistance,
-      finishLineVisible: false,
-      finishLineY: null,
-      timeElapsed: 0,
-      speed: baseSpeed * SPEED_MULTIPLIER * config.speed,
-      obstacles: [],
-      obstacleFrequency,
-      spawnTimer: getSpawnCooldown(obstacleFrequency, get().difficulty),
-      nextObstacleId: 1,
-      obstaclesAvoided: 0,
-      obstaclesSpawned: 0,
-      crashTimerMs: 0,
-      crashLane: null,
-      crashY: null,
-      lastRunStats: createRunStats(),
-      powerUps: [],
-      shieldActive: false,
-      shieldUsed: false,
-      nextPowerUpId: 1,
-      powerUpSpawnTimer: POWERUP_SPAWN_INTERVAL,
-      newAchievement: null,
-    })
-  },
+  startLevel: (levelId) => set(() => initLevel(levelId, get().difficulty, false)),
+
   unlockNextLevel: () => {
     const nextLevel = get().currentLevel + 1
     set((state) => ({
@@ -451,61 +451,53 @@ export const useGameStore = create<GameStore>((set, get) => ({
       difficulty: state.difficulty,
     })
   },
-  resetRun: () => {
-    const levelId = get().currentLevel
-    const level = levels.find((entry) => entry.id === levelId)
-    const baseSpeed = level?.baseSpeed ?? 3
-    const finishLineDistance = level?.distance ?? 500
-    const obstacleFrequency = level?.obstacleFrequency ?? 'low'
-    const config = getDifficultyConfig(get().difficulty)
 
-    set({
-      gameState: 'countdown',
-      countdownValue: 3,
-      countdownTimer: COUNTDOWN_STEP_MS,
-      playerLane: 1,
-      distanceTraveled: 0,
-      finishLineDistance,
-      finishLineVisible: false,
-      finishLineY: null,
-      timeElapsed: 0,
-      speed: baseSpeed * SPEED_MULTIPLIER * config.speed,
-      obstacles: [],
-      obstacleFrequency,
-      spawnTimer: getSpawnCooldown(obstacleFrequency, get().difficulty),
-      nextObstacleId: 1,
-      obstaclesAvoided: 0,
-      obstaclesSpawned: 0,
-      crashTimerMs: 0,
-      crashLane: null,
-      crashY: null,
-      lastRunStats: createRunStats(),
-      powerUps: [],
-      shieldActive: false,
-      shieldUsed: false,
-      nextPowerUpId: 1,
-      powerUpSpawnTimer: POWERUP_SPAWN_INTERVAL,
-      newAchievement: null,
-    })
+  resetRun: () => {
+    const state = get()
+    if (state.isEndless) return get().startEndless()
+    set(initLevel(state.currentLevel, state.difficulty, false))
   },
-  moveLeft: () =>
-    set((state) => ({ playerLane: Math.max(0, state.playerLane - 1) as 0 | 1 | 2 })),
-  moveRight: () =>
-    set((state) => ({ playerLane: Math.min(2, state.playerLane + 1) as 0 | 1 | 2 })),
+
+  steerLeft: (deltaSeconds) =>
+    set((state) => {
+      if (state.gameState !== 'playing' || state.isSpinning) return state
+      return { playerX: Math.max(WALL_MIN_X, state.playerX - STEER_SPEED * deltaSeconds) }
+    }),
+
+  steerRight: (deltaSeconds) =>
+    set((state) => {
+      if (state.gameState !== 'playing' || state.isSpinning) return state
+      return { playerX: Math.min(WALL_MAX_X, state.playerX + STEER_SPEED * deltaSeconds) }
+    }),
+
+  setBoost: (active) => set({ isBoosting: active }),
+
   pause: () =>
     set((state) => (state.gameState === 'playing' ? { gameState: 'paused' } : {})),
+
   resume: () =>
     set((state) => (state.gameState === 'paused' ? { gameState: 'playing' } : {})),
+
   dismissAchievement: () => set({ newAchievement: null }),
+
+  startEndless: () => {
+    const diff = get().difficulty
+    set({
+      ...initLevel(0, diff, true),
+      isEndless: true,
+      obstacleFrequency: 'medium',
+      speed: 3.5 * SPEED_MULTIPLIER * getDifficultyConfig(diff).speed,
+    })
+  },
+
   tick: (deltaMs) =>
     set((state) => {
       if (
         state.gameState !== 'playing' &&
         state.gameState !== 'crashing' &&
         state.gameState !== 'countdown'
-      ) {
+      )
         return state
-      }
 
       const clampedDeltaMs = Math.min(deltaMs, MAX_FRAME_DELTA_MS)
 
@@ -514,9 +506,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const nextTimer = state.countdownTimer - clampedDeltaMs
         if (nextTimer <= 0) {
           const nextValue = state.countdownValue - 1
-          if (nextValue <= 0) {
-            return { gameState: 'playing', countdownValue: 0, countdownTimer: 0 }
-          }
+          if (nextValue <= 0) return { gameState: 'playing', countdownValue: 0, countdownTimer: 0 }
           return { countdownValue: nextValue, countdownTimer: COUNTDOWN_STEP_MS }
         }
         return { countdownTimer: nextTimer }
@@ -526,23 +516,102 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (state.gameState === 'crashing') {
         const nextCrashTimer = Math.max(0, state.crashTimerMs - clampedDeltaMs)
         if (nextCrashTimer <= 0) {
-          return {
+          const endUpdate: Partial<GameStore> = {
             gameState: 'gameOver',
             crashTimerMs: 0,
-            crashLane: null,
             crashY: null,
           }
+          if (state.isEndless) {
+            const bestEndless = Math.max(state.bestEndlessDistance, state.distanceTraveled)
+            endUpdate.bestEndlessDistance = bestEndless
+            endUpdate.lastRunStats = createRunStats({
+              timeElapsed: state.timeElapsed,
+              obstaclesAvoided: state.obstaclesAvoided,
+              obstaclesSpawned: state.obstaclesSpawned,
+              score: state.score,
+              fuelRemaining: state.fuel,
+              stars: 1,
+              spinCount: state.spinCount,
+            })
+            saveProgress({
+              unlockedLevels: state.unlockedLevels,
+              selectedCharacter: state.selectedCharacter,
+              bestByLevel: state.bestByLevel,
+              audioEnabled: state.audioEnabled,
+              difficulty: state.difficulty,
+              bestEndlessDistance: bestEndless,
+              unlockedAchievements: state.unlockedAchievements,
+            })
+          }
+          return endUpdate
         }
-
-        return {
-          crashTimerMs: nextCrashTimer,
-        }
+        return { crashTimerMs: nextCrashTimer }
       }
 
       // --- Playing ---
       const levelCfg = levels.find((l) => l.id === state.currentLevel)
       const deltaSeconds = clampedDeltaMs / 1000
-      const distanceDelta = state.speed * deltaSeconds
+      const baseSpeed = levelCfg?.baseSpeed ?? 3
+      const maxSpeed = levelCfg?.maxSpeed ?? 5
+      const config = getDifficultyConfig(state.difficulty)
+      const currentSpeed = (state.isBoosting ? maxSpeed : baseSpeed) * SPEED_MULTIPLIER * config.speed
+
+      // Fuel depletion
+      const fuelDrainRate = levelCfg?.fuelDrainRate ?? 0.8
+      const fuelDrain = fuelDrainRate * deltaSeconds * (state.isBoosting ? 2 : 1)
+      let fuel = Math.max(0, state.fuel - fuelDrain)
+
+      // Fuel empty = game over
+      if (fuel <= 0) {
+        return {
+          ...state,
+          fuel: 0,
+          gameState: 'gameOver',
+          lastRunStats: createRunStats({
+            timeElapsed: state.timeElapsed,
+            obstaclesAvoided: state.obstaclesAvoided,
+            obstaclesSpawned: state.obstaclesSpawned,
+            score: state.score,
+            fuelRemaining: 0,
+            stars: 1,
+            spinCount: state.spinCount,
+          }),
+        }
+      }
+
+      // Spinout timer
+      let isSpinning = state.isSpinning
+      let spinTimer = state.spinTimer
+      let spinCount = state.spinCount
+      if (isSpinning) {
+        spinTimer = Math.max(0, spinTimer - clampedDeltaMs)
+        if (spinTimer <= 0) {
+          isSpinning = false
+          spinTimer = 0
+        }
+      }
+
+      // Wall collision
+      let playerX = state.playerX
+      if (playerX < WALL_MIN_X) {
+        playerX = WALL_MIN_X + 2
+        fuel = Math.max(0, fuel - FUEL_LOSS_WALL)
+        if (!isSpinning) {
+          isSpinning = true
+          spinTimer = SPIN_DURATION_OIL
+          spinCount += 1
+        }
+      } else if (playerX > WALL_MAX_X) {
+        playerX = WALL_MAX_X - 2
+        fuel = Math.max(0, fuel - FUEL_LOSS_WALL)
+        if (!isSpinning) {
+          isSpinning = true
+          spinTimer = SPIN_DURATION_OIL
+          spinCount += 1
+        }
+      }
+
+      const distanceDelta = currentSpeed * deltaSeconds
       const distanceTraveled = Math.min(
         state.distanceTraveled + distanceDelta,
         state.finishLineDistance
@@ -550,121 +619,180 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const progressRemaining = state.finishLineDistance - distanceTraveled
       const finishVisible = progressRemaining <= FINISH_VISIBLE_DISTANCE
 
-      const playerTop = PLAYER_Y + PLAYER_HEIGHT * PLAYER_HITBOX.top
-      const playerBottom = PLAYER_Y + PLAYER_HEIGHT * PLAYER_HITBOX.bottom
+      const playerTop = PLAYER_Y + PLAYER_HEIGHT * PLAYER_HITBOX_TOP
+      const playerBottom = PLAYER_Y + PLAYER_HEIGHT * PLAYER_HITBOX_BOTTOM
       const playerAvoidY = PLAYER_Y + PLAYER_HEIGHT * 0.9
       const obstacleSpeed = distanceDelta * PIXELS_PER_METER
-      let newlyAvoided = 0
-      const movedObstacles = state.obstacles
-        .map((obstacle) => {
-          const obstacleHeight = OBSTACLE_SIZES[obstacle.variant].height
-          const nextY = obstacle.y + obstacleSpeed
-          const passedPlayer =
-            obstacle.y + obstacleHeight < playerAvoidY &&
-            nextY + obstacleHeight >= playerAvoidY
 
-          if (passedPlayer) {
+      // Score
+      let score = state.score + distanceDelta * 10
+
+      // Move obstacles + AI
+      let newlyAvoided = 0
+      const pw = state.playfieldWidth || 400
+      const movedObstacles = state.obstacles
+        .map((ob) => {
+          const relativeSpeed = obstacleSpeed * ob.speed
+          let nextY = ob.y + relativeSpeed
+          let nextX = ob.x
+          let acted = ob.hasActed
+          let swerveTargetX = ob.swerveTargetX
+
+          // Red car AI: set swerve target once when near player
+          if (ob.variant === 'red_car' && !acted && ob.y > 80 && ob.y < 280) {
+            const dx = playerX - ob.x
+            swerveTargetX = ob.x + Math.sign(dx) * Math.min(Math.abs(dx) * 0.7, 15)
+            swerveTargetX = Math.max(WALL_MIN_X, Math.min(WALL_MAX_X, swerveTargetX))
+            acted = true
+          }
+
+          // Blue car AI: set swerve target once when entering danger zone
+          if (ob.variant === 'blue_car' && !acted && ob.y > 40 && ob.y < 200) {
+            const dx = playerX - ob.x
+            swerveTargetX = ob.x + Math.sign(dx) * Math.min(Math.abs(dx) * 0.65, 18)
+            swerveTargetX = Math.max(WALL_MIN_X, Math.min(WALL_MAX_X, swerveTargetX))
+            acted = true
+          }
+
+          // Smooth lerp toward swerve target
+          if (swerveTargetX !== null) {
+            const dx = swerveTargetX - nextX
+            if (Math.abs(dx) > 0.2) {
+              nextX += Math.sign(dx) * Math.min(Math.abs(dx), SWERVE_SPEED * deltaSeconds)
+            } else {
+              nextX = swerveTargetX
+              swerveTargetX = null
+            }
+            nextX = Math.max(WALL_MIN_X, Math.min(WALL_MAX_X, nextX))
+          }
+
+          const obstacleHeight = OBSTACLE_HEIGHTS[ob.variant]
+          const passedPlayer =
+            ob.y + obstacleHeight < playerAvoidY &&
+            nextY + obstacleHeight >= playerAvoidY
+          if (passedPlayer && ob.variant !== 'fuel_car' && ob.variant !== 'oil_slick') {
             newlyAvoided += 1
           }
 
-          return {
-            ...obstacle,
-            y: nextY,
-          }
+          return { ...ob, y: nextY, x: nextX, hasActed: acted, swerveTargetX }
         })
-        .filter((obstacle) => obstacle.y < 520)
+        .filter((ob) => ob.y < 520)
 
-      // --- Move power-ups ---
-      let powerUps = state.powerUps
-        .map((pu) => ({ ...pu, y: pu.y + obstacleSpeed }))
-        .filter((pu) => pu.y < 520)
-      let shieldActive = state.shieldActive
-      let shieldUsed = state.shieldUsed
-      let nextPowerUpId = state.nextPowerUpId
+      // Collision detection (pixel-based body-to-body)
+      let obstacles = movedObstacles
+      let gameOver = false
+      let crashY: number | null = null
+      const playerBodyHalfPx = (PLAYER_VISUAL_WIDTH_PX - BODY_INSET_PX * 2) / 2
 
-      // Collect power-ups
-      const uncollectedPowerUps: PowerUp[] = []
-      for (const pu of powerUps) {
-        if (
-          pu.lane === state.playerLane &&
-          pu.y + POWERUP_SIZE >= playerTop &&
-          pu.y <= playerBottom
-        ) {
-          if (pu.type === 'shield') {
-            shieldActive = true
+      for (const ob of movedObstacles) {
+        const obVisualW = OBSTACLE_VISUAL_WIDTHS_PX[ob.variant]
+        const obHeight = OBSTACLE_HEIGHTS[ob.variant]
+        const obBodyHalfPx = (obVisualW - BODY_INSET_PX * 2) / 2
+        const playerCenterPx = (playerX / 100) * pw
+        const obCenterPx = (ob.x / 100) * pw
+        const xOverlap = Math.abs(playerCenterPx - obCenterPx) < playerBodyHalfPx + obBodyHalfPx
+        const obTop = ob.y
+        const obBottom = ob.y + obHeight
+        const yOverlap = playerBottom >= obTop && playerTop <= obBottom
+
+        if (xOverlap && yOverlap) {
+          if (ob.variant === 'fuel_car') {
+            fuel = Math.min(state.maxFuel, fuel + FUEL_GAIN_PICKUP)
+            score += 100
+            obstacles = obstacles.filter((o) => o.id !== ob.id)
+          } else if (ob.variant === 'oil_slick') {
+            if (!isSpinning) {
+              isSpinning = true
+              spinTimer = SPIN_DURATION_OIL
+              spinCount += 1
+            }
+            obstacles = obstacles.filter((o) => o.id !== ob.id)
+          } else if (ob.variant === 'truck') {
+            gameOver = true
+            crashY = ob.y
+            break
+          } else {
+            // Regular car collision: fuel loss + spinout
+            fuel = Math.max(0, fuel - FUEL_LOSS_COLLISION)
+            if (!isSpinning) {
+              isSpinning = true
+              spinTimer = SPIN_DURATION_COLLISION
+              spinCount += 1
+            }
+            obstacles = obstacles.filter((o) => o.id !== ob.id)
           }
-        } else {
-          uncollectedPowerUps.push(pu)
         }
       }
-      powerUps = uncollectedPowerUps
 
-      // --- Collision detection (with shield) ---
-      const collidedObstacle = movedObstacles.find((obstacle) => {
-        if (obstacle.lane !== state.playerLane) {
-          return false
-        }
-        const obstacleHeight = OBSTACLE_SIZES[obstacle.variant].height
-        const obstacleTop = obstacle.y + obstacleHeight * OBSTACLE_HITBOX.top
-        const obstacleBottom =
-          obstacle.y + obstacleHeight * OBSTACLE_HITBOX.bottom
-        return playerBottom >= obstacleTop && playerTop <= obstacleBottom
-      })
-
-      if (collidedObstacle) {
-        if (shieldActive) {
-          // Shield absorbs the hit
-          const filteredObstacles = movedObstacles.filter(
-            (o) => o.id !== collidedObstacle.id
-          )
-          return {
-            ...state,
-            obstacles: filteredObstacles,
-            shieldActive: false,
-            shieldUsed: true,
-            obstaclesAvoided: state.obstaclesAvoided + newlyAvoided + 1,
-            powerUps,
-          }
-        }
+      if (gameOver) {
         return {
           ...state,
           gameState: 'crashing',
-          obstacles: movedObstacles,
+          obstacles,
           crashTimerMs: CRASH_DURATION_MS,
-          crashLane: collidedObstacle.lane,
-          crashY: collidedObstacle.y,
+          crashY,
+          distanceTraveled,
+          timeElapsed: state.timeElapsed + deltaSeconds,
+          score,
+          fuel,
           obstaclesAvoided: state.obstaclesAvoided + newlyAvoided,
-          powerUps,
+          playerX,
+          isSpinning,
+          spinTimer,
+          spinCount,
         }
       }
 
+      if (fuel <= 0) {
+        return {
+          ...state,
+          fuel: 0,
+          gameState: 'gameOver',
+          obstacles,
+          distanceTraveled,
+          timeElapsed: state.timeElapsed + deltaSeconds,
+          score,
+          obstaclesAvoided: state.obstaclesAvoided + newlyAvoided,
+          playerX,
+          isSpinning,
+          spinTimer,
+          spinCount,
+          lastRunStats: createRunStats({
+            timeElapsed: state.timeElapsed + deltaSeconds,
+            obstaclesAvoided: state.obstaclesAvoided + newlyAvoided,
+            obstaclesSpawned: state.obstaclesSpawned,
+            score,
+            fuelRemaining: 0,
+            stars: 1,
+            spinCount,
+          }),
+        }
+      }
+
+      // Finish line
       const playerMidY = PLAYER_Y + PLAYER_HEIGHT * 0.5
       const finishLineY = finishVisible
         ? Math.max(
             -FINISH_LINE_HEIGHT,
-            (1 - progressRemaining / FINISH_VISIBLE_DISTANCE) *
-              playerMidY -
-              FINISH_LINE_HEIGHT
+            (1 - progressRemaining / FINISH_VISIBLE_DISTANCE) * playerMidY - FINISH_LINE_HEIGHT
           )
         : null
       const finishLineCrossed =
-        finishLineY !== null &&
-        finishLineY + FINISH_LINE_HEIGHT >= playerMidY
+        finishLineY !== null && finishLineY + FINISH_LINE_HEIGHT >= playerMidY
 
-      if (distanceTraveled >= state.finishLineDistance && finishLineCrossed) {
+      if (!state.isEndless && distanceTraveled >= state.finishLineDistance && finishLineCrossed) {
         const finalTime = state.timeElapsed + deltaSeconds
         const finalAvoided = state.obstaclesAvoided + newlyAvoided
-        const totalSpawned = state.obstaclesSpawned
-        const avoidedRate =
-          totalSpawned > 0 ? finalAvoided / totalSpawned : 1
-        const parTime = state.finishLineDistance / state.speed
-        const stars = computeStars(finalTime, parTime, avoidedRate)
+        const parTime = state.finishLineDistance / baseSpeed / 12
+        const stars = computeStars(score, fuel, finalTime, parTime)
         const runStats = createRunStats({
           timeElapsed: finalTime,
           obstaclesAvoided: finalAvoided,
-          obstaclesSpawned: totalSpawned,
+          obstaclesSpawned: state.obstaclesSpawned,
+          score,
+          fuelRemaining: fuel,
           stars,
-          shieldUsed,
+          spinCount,
         })
         const prevBest = state.bestByLevel[state.currentLevel]
         const nextBest: BestStats = prevBest
@@ -672,35 +800,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
               bestTime: Math.min(prevBest.bestTime, finalTime),
               bestStars: Math.max(prevBest.bestStars, stars),
               bestAvoided: Math.max(prevBest.bestAvoided, finalAvoided),
+              bestScore: Math.max(prevBest.bestScore ?? 0, score),
             }
-          : {
-              bestTime: finalTime,
-              bestStars: stars,
-              bestAvoided: finalAvoided,
-            }
-        const nextBestByLevel = {
-          ...state.bestByLevel,
-          [state.currentLevel]: nextBest,
-        }
+          : { bestTime: finalTime, bestStars: stars, bestAvoided: finalAvoided, bestScore: score }
+        const nextBestByLevel = { ...state.bestByLevel, [state.currentLevel]: nextBest }
         const nextUnlocked = Math.max(state.unlockedLevels, state.currentLevel + 1)
 
-        const victoryState = {
+        const victoryState: GameStore = {
           ...state,
-          gameState: 'victory' as const,
-          obstacles: movedObstacles,
+          gameState: 'victory',
+          obstacles,
           distanceTraveled,
           timeElapsed: finalTime,
           finishLineVisible: finishVisible,
           finishLineY,
           obstaclesAvoided: finalAvoided,
+          score,
+          fuel,
           unlockedLevels: nextUnlocked,
           lastRunStats: runStats,
           bestByLevel: nextBestByLevel,
-          powerUps,
-          shieldUsed,
+          playerX,
+          isSpinning,
+          spinTimer,
+          spinCount,
         }
 
-        // Check achievements
         const newlyUnlocked = checkAchievements(victoryState)
         const allUnlocked = [...state.unlockedAchievements, ...newlyUnlocked]
 
@@ -722,68 +847,102 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       // --- Spawn obstacles ---
       let spawnTimer = state.spawnTimer - deltaSeconds
-      let obstacles = movedObstacles
       let nextObstacleId = state.nextObstacleId
       let obstaclesSpawned = state.obstaclesSpawned
-      const spawnCooldown = getSpawnCooldown(
-        state.obstacleFrequency,
-        state.difficulty
-      )
-      const laneClearThreshold =
-        LANE_CLEAR_THRESHOLD_BY_DIFFICULTY[state.difficulty] ??
-        LANE_CLEAR_THRESHOLD_BY_DIFFICULTY.hard
+      const spawnCooldown = getSpawnCooldown(state.obstacleFrequency, state.difficulty)
 
-      const canSpawn = progressRemaining > FINISH_BUFFER
+      const canSpawn = state.isEndless || progressRemaining > FINISH_BUFFER
       if (canSpawn) {
         let spawnPasses = 0
         while (spawnTimer <= 0 && spawnPasses < 2) {
           spawnPasses += 1
-          const recentObstacles = obstacles.filter(
-            (obstacle) => obstacle.y < laneClearThreshold
+          const pool = levelCfg?.theme.obstaclePool ?? ['yellow_car', 'red_car', 'blue_car']
+          const trafficPool = pool.filter(
+            (v) => v !== 'fuel_car' && v !== 'oil_slick'
           )
-          const occupiedLanes = new Set(recentObstacles.map((obstacle) => obstacle.lane))
-          const availableLanes = LANES.filter((lane) => !occupiedLanes.has(lane))
-
-          if (availableLanes.length > 0) {
-            const lane =
-              availableLanes[Math.floor(Math.random() * availableLanes.length)]
-            const pool = levelCfg?.theme.obstaclePool ?? ['motorcycle', 'car', 'truck']
-            const variant = pool[Math.floor(Math.random() * pool.length)] as Obstacle['variant']
-
-            obstacles = [
-              ...obstacles,
-              {
-                id: nextObstacleId,
-                lane,
-                y: -240,
-                variant,
-              },
-            ]
-            nextObstacleId += 1
-            obstaclesSpawned += 1
-            spawnTimer += spawnCooldown
-          } else {
-            spawnTimer = Math.max(spawnTimer + 0.18, 0.12)
-            break
-          }
+          const variant = trafficPool[Math.floor(Math.random() * trafficPool.length)] as Obstacle['variant']
+          const x = WALL_MIN_X + 5 + Math.random() * (WALL_MAX_X - WALL_MIN_X - 10)
+          obstacles = [
+            ...obstacles,
+            {
+              id: nextObstacleId,
+              x,
+              y: -OBSTACLE_HEIGHTS[variant] - 20,
+              variant,
+              speed: randomObstacleSpeed(variant),
+              hasActed: false,
+              swerveTargetX: null,
+            },
+          ]
+          nextObstacleId += 1
+          obstaclesSpawned += 1
+          spawnTimer += spawnCooldown
         }
       }
 
-      // --- Spawn power-ups ---
-      let powerUpSpawnTimer = state.powerUpSpawnTimer - deltaSeconds
-      if (canSpawn && powerUpSpawnTimer <= 0 && !shieldActive) {
-        const lane = LANES[Math.floor(Math.random() * LANES.length)]
-        powerUps = [
-          ...powerUps,
-          { id: nextPowerUpId, lane, y: -60, type: 'shield' },
+      // --- Spawn fuel cars ---
+      let fuelCarSpawnTimer = state.fuelCarSpawnTimer - deltaSeconds
+      const fuelCarFreq = levelCfg?.fuelCarFrequency ?? 8
+      if (canSpawn && fuelCarSpawnTimer <= 0) {
+        const x = WALL_MIN_X + 5 + Math.random() * (WALL_MAX_X - WALL_MIN_X - 10)
+        obstacles = [
+          ...obstacles,
+          {
+            id: nextObstacleId,
+            x,
+            y: -100,
+            variant: 'fuel_car' as const,
+            speed: 0.6,
+            hasActed: false,
+            swerveTargetX: null,
+          },
         ]
-        nextPowerUpId += 1
-        powerUpSpawnTimer = POWERUP_SPAWN_INTERVAL + (Math.random() - 0.5) * 8
+        nextObstacleId += 1
+        fuelCarSpawnTimer = fuelCarFreq + (Math.random() - 0.5) * 4
       }
+
+      // --- Spawn oil slicks ---
+      let oilSlickSpawnTimer = state.oilSlickSpawnTimer - deltaSeconds
+      const oilFreq = levelCfg?.oilSlickFrequency ?? 0
+      if (canSpawn && oilFreq > 0 && oilSlickSpawnTimer <= 0) {
+        const x = WALL_MIN_X + 8 + Math.random() * (WALL_MAX_X - WALL_MIN_X - 16)
+        obstacles = [
+          ...obstacles,
+          {
+            id: nextObstacleId,
+            x,
+            y: -50,
+            variant: 'oil_slick' as const,
+            speed: 1.0,
+            hasActed: false,
+            swerveTargetX: null,
+          },
+        ]
+        nextObstacleId += 1
+        oilSlickSpawnTimer = oilFreq + (Math.random() - 0.5) * 4
+      }
+
+      // --- Road curves ---
+      let roadCurveOffset = state.roadCurveOffset
+      let roadCurveTarget = state.roadCurveTarget
+      let curveChangeTimer = state.curveChangeTimer - deltaSeconds
+      const curveIntensity = levelCfg?.theme.curveIntensity ?? 0.2
+
+      if (curveChangeTimer <= 0) {
+        roadCurveTarget = (Math.random() - 0.5) * 60 * curveIntensity
+        curveChangeTimer = 3 + Math.random() * 5
+      }
+
+      const curveLerp = Math.min(1, deltaSeconds * 1.5)
+      roadCurveOffset += (roadCurveTarget - roadCurveOffset) * curveLerp
+
+      // --- Endless mode speed ramp ---
+      const nextSpeed = state.isEndless ? currentSpeed + ENDLESS_SPEED_RAMP * deltaSeconds : currentSpeed
 
       return {
         distanceTraveled,
         timeElapsed: state.timeElapsed + deltaSeconds,
+        speed: nextSpeed,
         finishLineVisible: finishVisible,
         finishLineY,
         obstacles,
@@ -791,11 +950,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
         nextObstacleId,
         obstaclesAvoided: state.obstaclesAvoided + newlyAvoided,
         obstaclesSpawned,
-        powerUps,
-        shieldActive,
-        shieldUsed,
-        nextPowerUpId,
-        powerUpSpawnTimer,
+        fuel,
+        score,
+        playerX,
+        isSpinning,
+        spinTimer,
+        spinCount,
+        fuelCarSpawnTimer,
+        oilSlickSpawnTimer,
+        roadCurveOffset,
+        roadCurveTarget,
+        curveChangeTimer,
       }
     }),
 }))

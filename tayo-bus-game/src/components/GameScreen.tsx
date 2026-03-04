@@ -1,10 +1,13 @@
 import type { TouchEvent } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { playLaneChange, playPowerUp } from '../audio/audioEngine'
-import carObstacle from '../assets/obstacles/car.svg'
-import motorcycleObstacle from '../assets/obstacles/motorcycle.svg'
+import { playLaneChange } from '../audio/audioEngine'
+import yellowCarObstacle from '../assets/obstacles/yellow_car.svg'
+import redCarObstacle from '../assets/obstacles/red_car.svg'
+import blueCarObstacle from '../assets/obstacles/blue_car.svg'
 import truckObstacle from '../assets/obstacles/truck.svg'
+import fuelCarObstacle from '../assets/obstacles/fuel_car.svg'
+import oilSlickObstacle from '../assets/obstacles/oil_slick.svg'
 import { characters } from '../data/characters'
 import { levels } from '../data/levels'
 import { useGameStore } from '../store/gameStore'
@@ -12,7 +15,12 @@ import { useGameStore } from '../store/gameStore'
 const GameScreen = () => {
   const {
     currentLevel,
-    playerLane,
+    playerX,
+    fuel,
+    isSpinning,
+    isBoosting,
+    score,
+    roadCurveOffset,
     distanceTraveled,
     finishLineDistance,
     finishLineVisible,
@@ -23,23 +31,28 @@ const GameScreen = () => {
     selectedCharacter,
     gameState,
     audioEnabled,
-    moveLeft,
-    moveRight,
-    tick,
-    obstaclesAvoided,
     crashTimerMs,
-    crashLane,
     crashY,
     countdownValue,
-    powerUps,
-    shieldActive,
+    isEndless,
+    obstaclesAvoided,
+    steerLeft,
+    steerRight,
+    setBoost,
+    tick,
     pause,
     resume,
     setGameState,
+    setPlayfieldWidth,
   } = useGameStore(
     useShallow((state) => ({
       currentLevel: state.currentLevel,
-      playerLane: state.playerLane,
+      playerX: state.playerX,
+      fuel: state.fuel,
+      isSpinning: state.isSpinning,
+      isBoosting: state.isBoosting,
+      score: state.score,
+      roadCurveOffset: state.roadCurveOffset,
       distanceTraveled: state.distanceTraveled,
       finishLineDistance: state.finishLineDistance,
       finishLineVisible: state.finishLineVisible,
@@ -50,19 +63,19 @@ const GameScreen = () => {
       selectedCharacter: state.selectedCharacter,
       gameState: state.gameState,
       audioEnabled: state.audioEnabled,
-      moveLeft: state.moveLeft,
-      moveRight: state.moveRight,
-      tick: state.tick,
-      obstaclesAvoided: state.obstaclesAvoided,
       crashTimerMs: state.crashTimerMs,
-      crashLane: state.crashLane,
       crashY: state.crashY,
       countdownValue: state.countdownValue,
-      powerUps: state.powerUps,
-      shieldActive: state.shieldActive,
+      isEndless: state.isEndless,
+      obstaclesAvoided: state.obstaclesAvoided,
+      steerLeft: state.steerLeft,
+      steerRight: state.steerRight,
+      setBoost: state.setBoost,
+      tick: state.tick,
       pause: state.pause,
       resume: state.resume,
       setGameState: state.setGameState,
+      setPlayfieldWidth: state.setPlayfieldWidth,
     }))
   )
 
@@ -72,144 +85,112 @@ const GameScreen = () => {
     characters[0]
   const theme = level?.theme ?? levels[0].theme
   const levelDistance = level?.distance ?? finishLineDistance
-  const speedLabel =
-    level && Number.isInteger(level.baseSpeed)
-      ? level.baseSpeed
-      : level?.baseSpeed?.toFixed(1) ?? '0'
 
   const safeFinishLineDistance = Math.max(finishLineDistance, 1)
   const progress = Math.min(distanceTraveled / safeFinishLineDistance, 1)
   const progressPercent = Math.max(0, Math.min(100, Math.round(progress * 100)))
   const distanceRounded = Math.round(distanceTraveled)
-  const routeCode = `R-${String(currentLevel).padStart(2, '0')}`
-  const speedGaugePercent = Math.max(
-    0,
-    Math.min(
-      100,
-      Math.round(
-        (speed /
-          Math.max(1, (typeof level?.baseSpeed === 'number' ? level.baseSpeed : 1) *
-            1.9)) *
-          100
-      )
-    )
-  )
 
-  const lanePositions = useMemo(() => ['16.5%', '50%', '83.5%'], [])
-  const lastFrameRef = useRef<number | null>(null)
-  const swipeStartX = useRef<number | null>(null)
-  const swipeStartY = useRef<number | null>(null)
-  const laneSoundReady = useRef(false)
-  const previousLane = useRef<0 | 1 | 2 | null>(null)
-  const signalTimerRef = useRef<number | null>(null)
-  const [turnSignal, setTurnSignal] = useState<'left' | 'right' | null>(null)
+  const isCrashing = gameState === 'crashing'
+  const raceActive = gameState === 'playing' || isCrashing || gameState === 'countdown'
 
-  const obstaclePalette = useMemo(
-    () => ({
-      motorcycle: { width: 32, height: 72, src: motorcycleObstacle },
-      car: { width: 46, height: 90, src: carObstacle },
-      truck: { width: 56, height: 130, src: truckObstacle },
-    }),
-    []
-  )
+  const crashFocusX = playerX
+  const crashFocusY =
+    crashY === null ? 248 : Math.max(60, Math.min(334, crashY + 62))
 
   const weather = level?.theme.weather ?? 'none'
   const envBg = level?.theme.bg ?? 'linear-gradient(180deg, #fbbf24 0%, #f59e0b 40%, #d97706 100%)'
   const sceneryColor = level?.theme.sceneryColor ?? '#78716c'
-  const parTime = levelDistance / (level?.baseSpeed ?? 3) / 12
   const busRotation = '180deg'
   const busShadow = '0 12px 20px rgba(15, 23, 42, 0.28)'
-  const isCrashing = gameState === 'crashing'
-  const raceActive = gameState === 'playing' || isCrashing || gameState === 'countdown'
-  const visibleTurnSignal = gameState === 'playing' ? turnSignal : null
 
-  const prevShieldActive = useRef(shieldActive)
+  const fuelStatus = fuel > 50 ? 'ok' : fuel >= 20 ? 'warn' : 'critical'
+
+  const obstaclePalette = useMemo(
+    () => ({
+      yellow_car: { width: 46, height: 90, src: yellowCarObstacle },
+      red_car: { width: 46, height: 90, src: redCarObstacle },
+      blue_car: { width: 50, height: 90, src: blueCarObstacle },
+      truck: { width: 56, height: 130, src: truckObstacle },
+      fuel_car: { width: 42, height: 80, src: fuelCarObstacle },
+      oil_slick: { width: 60, height: 30, src: oilSlickObstacle },
+    }),
+    []
+  )
+
+  const lastFrameRef = useRef<number | null>(null)
+  const swipeStartX = useRef<number | null>(null)
+  const swipeStartY = useRef<number | null>(null)
+  const keysDown = useRef<Set<string>>(new Set())
+  const mobileSteerRef = useRef<'left' | 'right' | null>(null)
+  const mobileBoostRef = useRef(false)
+  const roadRef = useRef<HTMLDivElement>(null)
 
   const vibrate = useCallback((ms: number) => {
     try { navigator?.vibrate?.(ms) } catch {}
   }, [])
-  const crashFocusLane = crashLane ?? playerLane
-  const crashFocusY =
-    crashY === null ? 248 : Math.max(60, Math.min(334, crashY + 62))
-
-  const flashTurnSignal = useCallback((direction: 'left' | 'right') => {
-    setTurnSignal(direction)
-    if (signalTimerRef.current !== null) {
-      window.clearTimeout(signalTimerRef.current)
-    }
-    signalTimerRef.current = window.setTimeout(() => {
-      setTurnSignal(null)
-      signalTimerRef.current = null
-    }, 420)
-  }, [])
-
-  const handleMoveLeft = useCallback(() => {
-    if (gameState !== 'playing') {
-      return
-    }
-    if (playerLane > 0) {
-      flashTurnSignal('left')
-      vibrate(50)
-    }
-    moveLeft()
-  }, [flashTurnSignal, gameState, moveLeft, playerLane, vibrate])
-
-  const handleMoveRight = useCallback(() => {
-    if (gameState !== 'playing') {
-      return
-    }
-    if (playerLane < 2) {
-      flashTurnSignal('right')
-      vibrate(50)
-    }
-    moveRight()
-  }, [flashTurnSignal, gameState, moveRight, playerLane, vibrate])
 
   useEffect(() => {
+    const el = roadRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry) setPlayfieldWidth(entry.contentRect.width)
+    })
+    ro.observe(el)
+    setPlayfieldWidth(el.clientWidth)
+    return () => ro.disconnect()
+  }, [setPlayfieldWidth])
+
+  // Keyboard listeners: track held keys
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' || event.key === 'p') {
+        event.preventDefault()
+        if (gameState === 'playing') {
+          pause()
+        } else if (gameState === 'paused') {
+          resume()
+        }
+        return
+      }
+
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+        event.preventDefault()
+      }
+
+      keysDown.current.add(event.key)
+    }
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      keysDown.current.delete(event.key)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
     return () => {
-      if (signalTimerRef.current !== null) {
-        window.clearTimeout(signalTimerRef.current)
-      }
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [])
+  }, [gameState, pause, resume])
 
+  // Sync boost state with ArrowUp held
   useEffect(() => {
-    if (gameState !== 'playing') {
-      laneSoundReady.current = false
-      previousLane.current = null
-      return
-    }
+    const interval = window.setInterval(() => {
+      if (gameState !== 'playing') return
+      const shouldBoost = keysDown.current.has('ArrowUp') || mobileBoostRef.current
+      setBoost(shouldBoost)
+    }, 50)
+    return () => window.clearInterval(interval)
+  }, [gameState, setBoost])
 
-    if (!laneSoundReady.current) {
-      laneSoundReady.current = true
-      previousLane.current = playerLane
-      return
-    }
-
-    if (previousLane.current !== playerLane) {
-      if (audioEnabled) {
-        playLaneChange()
-      }
-    }
-
-    previousLane.current = playerLane
-  }, [audioEnabled, gameState, playerLane])
-
+  // Vibrate on crash
   useEffect(() => {
     if (isCrashing) {
       vibrate(200)
     }
   }, [isCrashing, vibrate])
 
-  useEffect(() => {
-    if (shieldActive && !prevShieldActive.current) {
-      if (audioEnabled) {
-        playPowerUp()
-      }
-    }
-    prevShieldActive.current = shieldActive
-  }, [audioEnabled, shieldActive])
-
+  // rAF game loop
   useEffect(() => {
     if (!raceActive) {
       return
@@ -222,7 +203,21 @@ const GameScreen = () => {
       }
       const delta = time - lastFrameRef.current
       lastFrameRef.current = time
+
       tick(delta)
+
+      // Continuous steering from held keys or mobile buttons
+      if (gameState === 'playing') {
+        const deltaSeconds = delta / 1000
+        const steerDir = mobileSteerRef.current
+        if (keysDown.current.has('ArrowLeft') || steerDir === 'left') {
+          steerLeft(deltaSeconds)
+        }
+        if (keysDown.current.has('ArrowRight') || steerDir === 'right') {
+          steerRight(deltaSeconds)
+        }
+      }
+
       frameId = requestAnimationFrame(loop)
     }
 
@@ -232,38 +227,9 @@ const GameScreen = () => {
       cancelAnimationFrame(frameId)
       lastFrameRef.current = null
     }
-  }, [raceActive, tick])
+  }, [raceActive, tick, gameState, steerLeft, steerRight])
 
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' || event.key === 'p') {
-        event.preventDefault()
-        if (gameState === 'playing') {
-          pause()
-        } else if (gameState === 'paused') {
-          resume()
-        }
-        return
-      }
-
-      if (gameState !== 'playing') {
-        return
-      }
-
-      if (event.key === 'ArrowLeft') {
-        event.preventDefault()
-        handleMoveLeft()
-      }
-      if (event.key === 'ArrowRight') {
-        event.preventDefault()
-        handleMoveRight()
-      }
-    }
-
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [gameState, handleMoveLeft, handleMoveRight, pause, resume])
-
+  // Swipe handlers for mobile
   const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
     if (gameState !== 'playing') {
       return
@@ -292,44 +258,58 @@ const GameScreen = () => {
 
     if (isSwipe) {
       if (deltaX > 0) {
-        handleMoveRight()
+        steerRight(0.15)
       } else {
-        handleMoveLeft()
+        steerLeft(0.15)
       }
-      return
-    }
-
-    const isTap = absX <= 14 && absY <= 14
-    if (isTap) {
-      const bounds = event.currentTarget.getBoundingClientRect()
-      if (bounds.width <= 0) {
-        return
-      }
-      const relativeX = touch.clientX - bounds.left
-      const rawLane = Math.floor((relativeX / bounds.width) * 3)
-      const tappedLane = Math.max(0, Math.min(2, rawLane)) as 0 | 1 | 2
-      if (tappedLane < playerLane) {
-        handleMoveLeft()
-      } else if (tappedLane > playerLane) {
-        handleMoveRight()
+      if (audioEnabled) {
+        playLaneChange()
       }
     }
   }
+
+  // Mobile control handlers
+  const handleMobileSteerDown = useCallback((direction: 'left' | 'right') => {
+    mobileSteerRef.current = direction
+    vibrate(30)
+  }, [vibrate])
+
+  const handleMobileSteerUp = useCallback(() => {
+    mobileSteerRef.current = null
+  }, [])
+
+  const handleMobileBoostDown = useCallback(() => {
+    mobileBoostRef.current = true
+  }, [])
+
+  const handleMobileBoostUp = useCallback(() => {
+    mobileBoostRef.current = false
+  }, [])
 
   return (
     <section className="space-y-4 animate-fade-up" aria-label={`Level ${currentLevel} gameplay`}>
       <header className="kid-route-header" aria-label="Level progress">
         <div className="flex items-center gap-3">
           <span className="kid-level-bubble" style={{ background: theme.accent }}>
-            <span className="text-2xl">{level?.theme.envIcon ?? '🚌'}</span>
+            <span className="text-2xl">{isEndless ? '∞' : (level?.theme.envIcon ?? '🚌')}</span>
           </span>
           <div className="min-w-0">
             <h2 className="kid-route-title truncate">
-              {level?.name ?? 'Road Run'}
+              {isEndless ? 'Endless Run' : (level?.name ?? 'Road Run')}
             </h2>
-            <p className="kid-route-subtitle">Level {currentLevel} · {level?.theme.envLabel ?? 'Route'}</p>
+            <p className="kid-route-subtitle">{isEndless ? 'Endless' : `Level ${currentLevel} · ${level?.theme.envLabel ?? 'Route'}`}</p>
           </div>
         </div>
+
+        {/* Fuel gauge */}
+        <div className="rf-fuel-gauge">
+          <div
+            className={`rf-fuel-fill rf-fuel-fill-${fuelStatus}`}
+            style={{ width: `${Math.max(0, Math.min(100, fuel))}%` }}
+          />
+          <span className="rf-fuel-label">⛽ {Math.round(fuel)}%</span>
+        </div>
+
         <div className="kid-progress-strip">
           <div className="kid-progress-track" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100} aria-label={`Level progress: ${progressPercent}%`}>
             <div
@@ -339,8 +319,14 @@ const GameScreen = () => {
             <span className="kid-progress-bus" style={{ left: `${Math.max(2, Math.min(92, progressPercent))}%` }}>🚌</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="kid-progress-label">🏁 {progressPercent}%</span>
-            <span className="kid-progress-label">{distanceRounded}m / {levelDistance}m</span>
+            {isEndless ? (
+              <span className="kid-progress-label">🏃 {distanceRounded}m</span>
+            ) : (
+              <>
+                <span className="kid-progress-label">🏁 {progressPercent}%</span>
+                <span className="kid-progress-label">{distanceRounded}m / {levelDistance}m</span>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -348,7 +334,10 @@ const GameScreen = () => {
       <div className={`kid-road-frame ${isCrashing ? 'kid-warning-shake crash-screen-shake' : ''}`}>
         <div className="kid-road-info">
           <span className="kid-speed-badge" style={{ background: theme.accent }}>⚡ {Math.round(speed)}</span>
-          <span className="kid-traffic-badge">🚗 {level?.obstacleFrequency === 'high' ? 'Busy!' : level?.obstacleFrequency === 'medium' ? 'Watch out!' : 'Easy!'}</span>
+          <span className="kid-traffic-badge">🏆 {Math.round(score)}</span>
+          {isBoosting && (
+            <span className="kid-speed-badge" style={{ background: '#ef4444', boxShadow: '0 0 12px rgba(239,68,68,0.6)' }}>🔥 BOOST</span>
+          )}
           {gameState === 'playing' && (
             <button
               type="button"
@@ -363,30 +352,33 @@ const GameScreen = () => {
         </div>
 
         <div
+          ref={roadRef}
           className="bus-road-window touch-pan-y"
-          style={{ background: theme.road }}
+          style={{
+            background: theme.road,
+            transform: `perspective(800px) rotateY(${roadCurveOffset * 0.3}deg)`,
+          }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
+          {/* Road barriers */}
+          <div className="rf-road-barrier-left" />
+          <div className="rf-road-barrier-right" />
+
           {/* Environment background strip */}
           <div
             className="absolute left-0 right-0 top-0 h-16 opacity-60"
             style={{ background: envBg }}
           >
-            {/* Scenery silhouettes */}
             <div className="absolute bottom-0 left-0 right-0 h-8">
               <svg className="h-full w-full" viewBox="0 0 400 32" preserveAspectRatio="none">
                 {level?.id === 5 ? (
-                  /* Tunnel: arch ceiling */
                   <path d="M0 0 Q200 32 400 0 L400 32 L0 32Z" fill={sceneryColor} opacity="0.6" />
                 ) : level?.id === 4 ? (
-                  /* Mountain: peaks */
                   <path d="M0 32 L40 10 L80 22 L130 4 L180 18 L220 8 L270 20 L320 6 L360 16 L400 12 L400 32Z" fill={sceneryColor} opacity="0.5" />
                 ) : level?.id === 6 ? (
-                  /* Countryside: rolling hills */
                   <path d="M0 28 Q50 14 100 22 Q150 10 200 18 Q250 8 300 16 Q350 12 400 20 L400 32 L0 32Z" fill={sceneryColor} opacity="0.5" />
                 ) : (
-                  /* City/Road: buildings */
                   <path d="M0 32 L0 18 L20 18 L20 10 L40 10 L40 20 L60 20 L60 6 L80 6 L80 14 L110 14 L110 22 L140 22 L140 8 L160 8 L160 18 L190 18 L190 12 L210 12 L210 24 L240 24 L240 4 L260 4 L260 16 L290 16 L290 10 L310 10 L310 20 L340 20 L340 14 L360 14 L360 26 L380 26 L380 8 L400 8 L400 32Z" fill={sceneryColor} opacity="0.4" />
                 )}
               </svg>
@@ -412,6 +404,8 @@ const GameScreen = () => {
 
           <div className="absolute inset-0 bg-[linear-gradient(to_bottom,_rgba(255,255,255,0.08),_transparent)]" />
           <div className="absolute inset-0 bg-[linear-gradient(to_right,_rgba(15,23,42,0.12)_0%,_transparent_22%,_transparent_78%,_rgba(15,23,42,0.12)_100%)]" />
+
+          {/* Lane dashes */}
           <div className="absolute inset-0">
             <div
               className="lane-dash-flow absolute left-[33.5%] top-0 h-full w-1.5 -translate-x-1/2 opacity-75"
@@ -431,30 +425,20 @@ const GameScreen = () => {
             <div className="absolute right-4 top-0 h-full w-1 rounded-full bg-white/35" />
           </div>
 
-          <div className="absolute inset-0 flex">
-            <div
-              className="flex-1 border-r-2 border-dashed"
-              style={{ borderColor: theme.lane }}
-            />
-            <div
-              className="flex-1 border-r-2 border-dashed"
-              style={{ borderColor: theme.lane }}
-            />
-            <div className="flex-1" />
-          </div>
-
+          {/* Road progress bar overlay */}
           <div className="absolute left-2 right-2 top-2 z-10">
             <div className="kid-road-progress-bar">
               <div
                 className="kid-road-progress-fill"
                 style={{
                   width: `${progressPercent}%`,
-                  background: `linear-gradient(90deg, #fbbf24, #f97316, #ef4444)`,
+                  background: 'linear-gradient(90deg, #fbbf24, #f97316, #ef4444)',
                 }}
               />
             </div>
           </div>
 
+          {/* Speed lines */}
           {speed > 60 && (
             <div className="pointer-events-none absolute inset-0 overflow-hidden z-[4]">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -473,6 +457,7 @@ const GameScreen = () => {
           )}
 
           <div className="relative h-[430px]">
+            {/* Finish line */}
             {finishLineVisible && finishLineY !== null && (
               <div
                 className="absolute left-0 right-0 flex items-center justify-center"
@@ -484,14 +469,16 @@ const GameScreen = () => {
               </div>
             )}
 
+            {/* Obstacles */}
             {obstacles.map((obstacle) => {
-              const style = obstaclePalette[obstacle.variant]
+              const style = obstaclePalette[obstacle.variant as keyof typeof obstaclePalette]
+              if (!style) return null
               return (
                 <div
                   key={obstacle.id}
                   className="absolute"
                   style={{
-                    left: lanePositions[obstacle.lane],
+                    left: `${obstacle.x}%`,
                     top: obstacle.y,
                     width: style.width,
                     height: style.height,
@@ -508,27 +495,14 @@ const GameScreen = () => {
               )
             })}
 
-            {powerUps.map((pu) => (
-              <div
-                key={`pu-${pu.id}`}
-                className="absolute"
-                style={{
-                  left: lanePositions[pu.lane],
-                  top: pu.y,
-                  transform: 'translateX(-50%)',
-                }}
-              >
-                <div className="game-powerup-shield">🛡️</div>
-              </div>
-            ))}
-
+            {/* Crash effects */}
             {isCrashing && (
               <>
                 <div className="crash-flash-overlay" />
                 <div
                   className="pointer-events-none absolute z-20"
                   style={{
-                    left: lanePositions[crashFocusLane],
+                    left: `${crashFocusX}%`,
                     top: crashFocusY,
                     transform: 'translate(-50%, -50%)',
                   }}
@@ -551,11 +525,11 @@ const GameScreen = () => {
               </>
             )}
 
+            {/* Player bus */}
             <div
-              key={`player-${playerLane}`}
-              className="player-bus-glow absolute bottom-8 transition-[left,transform,box-shadow] duration-200 ease-out"
+              className="player-bus-glow absolute bottom-8 transition-[left,transform,box-shadow] duration-75 ease-out"
               style={{
-                left: lanePositions[playerLane],
+                left: `${playerX}%`,
                 width: 58,
                 height: 128,
                 boxShadow: busShadow,
@@ -566,8 +540,8 @@ const GameScreen = () => {
                 src={profile.topDown}
                 alt={profile.name}
                 className={`h-full w-full object-contain ${
-                  isCrashing ? 'bus-crash-shake' : 'lane-bump'
-                }`}
+                  isCrashing ? 'bus-crash-shake' : ''
+                } ${isSpinning ? 'rf-spinout' : ''}`}
                 draggable={false}
               />
               <span className="player-headlight-glint player-headlight-glint-left" />
@@ -584,11 +558,10 @@ const GameScreen = () => {
                 className="sparkle -top-2 right-6 h-2.5 w-2.5 bg-white/70"
                 style={{ animationDelay: '520ms' }}
               />
-              {shieldActive && <span className="shield-active-glow" />}
             </div>
-
           </div>
 
+          {/* Countdown overlay */}
           {gameState === 'countdown' && (
             <div className="countdown-overlay">
               <span key={countdownValue} className={countdownValue > 0 ? 'countdown-number' : 'countdown-go'}>
@@ -597,6 +570,7 @@ const GameScreen = () => {
             </div>
           )}
 
+          {/* Pause overlay */}
           {gameState === 'paused' && (
             <div className="pause-overlay">
               <span className="pause-title">⏸️ Paused</span>
@@ -615,20 +589,31 @@ const GameScreen = () => {
         </div>
       </div>
 
+      {/* Dashboard */}
       <div className="kid-dashboard" role="status" aria-label="Game stats and controls">
         <div className="kid-stats-row">
           <div className="kid-stat-bubble" style={{ borderColor: theme.accent }}>
             <span className="text-2xl">⚡</span>
             <span className="kid-stat-number" style={{ color: theme.accent }}>{Math.round(speed)}</span>
           </div>
+          <div className="kid-stat-bubble" style={{ borderColor: '#34d399' }}>
+            <span className="text-2xl">⛽</span>
+            <span className="kid-stat-number" style={{ color: '#34d399' }}>{Math.round(fuel)}</span>
+          </div>
+          <div className="kid-stat-bubble" style={{ borderColor: '#fbbf24' }}>
+            <span className="text-2xl">🏆</span>
+            <span className="kid-stat-number" style={{ color: '#fbbf24' }}>{Math.round(score)}</span>
+          </div>
           <div className="kid-stat-bubble" style={{ borderColor: '#818cf8' }}>
             <span className="text-2xl">⏱️</span>
             <span className="kid-stat-number" style={{ color: '#818cf8' }}>{Math.round(timeElapsed)}s</span>
           </div>
-          <div className="kid-stat-bubble" style={{ borderColor: '#34d399' }}>
-            <span className="text-2xl">⭐</span>
-            <span className="kid-stat-number" style={{ color: '#34d399' }}>{obstaclesAvoided}</span>
-          </div>
+          {isBoosting && (
+            <div className="kid-stat-bubble" style={{ borderColor: '#ef4444', boxShadow: '0 0 8px rgba(239,68,68,0.4)' }}>
+              <span className="text-2xl">🔥</span>
+              <span className="kid-stat-number" style={{ color: '#ef4444' }}>BOOST</span>
+            </div>
+          )}
           {isCrashing && (
             <div className="kid-stat-bubble kid-crash-bubble">
               <span className="text-2xl">💥</span>
@@ -637,44 +622,58 @@ const GameScreen = () => {
           )}
         </div>
 
-        <div className="kid-lane-dots" role="presentation">
-          {lanePositions.map((_, index) => (
-            <span
-              key={`lane-indicator-${index}`}
-              className={`kid-lane-pip ${playerLane === index ? 'kid-lane-pip-active' : ''}`}
-              style={playerLane === index ? { background: theme.accent, borderColor: theme.accent } : undefined}
-            />
-          ))}
-        </div>
-
+        {/* Mobile controls */}
         <div className="kid-controls">
           <button
             type="button"
-            onClick={handleMoveLeft}
+            onPointerDown={() => handleMobileSteerDown('left')}
+            onPointerUp={handleMobileSteerUp}
+            onPointerLeave={handleMobileSteerUp}
+            onPointerCancel={handleMobileSteerUp}
             disabled={isCrashing}
             className="kid-drive-btn kid-drive-btn-left"
-            aria-label="Move left"
+            aria-label="Steer left"
           >
             <span className="kid-drive-arrow">👈</span>
           </button>
           <div className="kid-drive-center">
-            <span className={`text-3xl ${isCrashing ? 'kid-crash-shake' : 'kid-bounce'}`}>
-              {isCrashing ? '😵' : '😊'}
-            </span>
+            <button
+              type="button"
+              onPointerDown={handleMobileBoostDown}
+              onPointerUp={handleMobileBoostUp}
+              onPointerLeave={handleMobileBoostUp}
+              onPointerCancel={handleMobileBoostUp}
+              disabled={isCrashing}
+              className="kid-drive-btn"
+              style={{
+                background: isBoosting
+                  ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                  : 'linear-gradient(135deg, #f97316, #ea580c)',
+                minWidth: 56,
+                minHeight: 56,
+                borderRadius: '50%',
+              }}
+              aria-label="Boost"
+            >
+              <span className="text-2xl">🔥</span>
+            </button>
           </div>
           <button
             type="button"
-            onClick={handleMoveRight}
+            onPointerDown={() => handleMobileSteerDown('right')}
+            onPointerUp={handleMobileSteerUp}
+            onPointerLeave={handleMobileSteerUp}
+            onPointerCancel={handleMobileSteerUp}
             disabled={isCrashing}
             className="kid-drive-btn kid-drive-btn-right"
-            aria-label="Move right"
+            aria-label="Steer right"
           >
             <span className="kid-drive-arrow">👉</span>
           </button>
         </div>
 
         <p className="kid-hint">
-          Swipe or tap the big buttons! 🎮
+          Hold arrows to steer! 🏎️
         </p>
       </div>
     </section>
