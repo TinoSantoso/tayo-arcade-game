@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   playAchievement,
+  playBoostStart,
   playCountdownBeep,
   playCountdownGo,
   playCrash,
-  playShieldBreak,
+  playFuelPickup,
+  playFuelWarning,
+  playNearMiss,
+  playOilSlick,
+  playSpinout,
   playVictory,
+  playWallHit,
   primeAudio,
   setAudioEnabled,
   startMusic,
@@ -27,11 +33,9 @@ function App() {
   const difficulty = useGameStore((state) => state.difficulty)
   const unlockedLevels = useGameStore((state) => state.unlockedLevels)
   const countdownValue = useGameStore((state) => state.countdownValue)
-  const shieldActive = useGameStore((state) => state.shieldActive)
   const newAchievement = useGameStore((state) => state.newAchievement)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const prevCountdownRef = useRef(countdownValue)
-  const prevShieldRef = useRef(shieldActive)
   const isGameplay = gameState === 'playing' || gameState === 'crashing' || gameState === 'countdown' || gameState === 'paused'
   const unlockedCount = Math.min(unlockedLevels, levels.length)
   const stateLabel =
@@ -98,19 +102,32 @@ function App() {
   }, [countdownValue, audioEnabled])
 
   useEffect(() => {
-    const prev = prevShieldRef.current
-    prevShieldRef.current = shieldActive
-    if (!audioEnabled) return
-    if (prev && !shieldActive) {
-      playShieldBreak()
-    }
-  }, [shieldActive, audioEnabled])
-
-  useEffect(() => {
     if (newAchievement && audioEnabled) {
       playAchievement()
     }
   }, [newAchievement, audioEnabled])
+
+  // Play sound events from game tick
+  const pendingSounds = useGameStore((state) => state.pendingSounds)
+  const consumeSounds = useGameStore((state) => state.consumeSounds)
+  useEffect(() => {
+    if (!audioEnabled || pendingSounds.length === 0) return
+
+    const soundMap: Record<string, () => void> = {
+      fuelPickup: playFuelPickup,
+      oilSlick: playOilSlick,
+      wallHit: playWallHit,
+      spinout: playSpinout,
+      fuelWarning: playFuelWarning,
+      nearMiss: playNearMiss,
+      boostStart: playBoostStart,
+    }
+
+    for (const s of pendingSounds) {
+      soundMap[s]?.()
+    }
+    consumeSounds()
+  }, [audioEnabled, pendingSounds, consumeSounds])
 
   return (
     <div className="relative min-h-screen overflow-hidden px-4 py-6 sm:px-8 sm:py-8">

@@ -2,6 +2,7 @@ import type { TouchEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { playLaneChange } from '../audio/audioEngine'
+import RoadScenery from './RoadScenery'
 import yellowCarObstacle from '../assets/obstacles/yellow_car.svg'
 import redCarObstacle from '../assets/obstacles/red_car.svg'
 import blueCarObstacle from '../assets/obstacles/blue_car.svg'
@@ -99,8 +100,6 @@ const GameScreen = () => {
     crashY === null ? 248 : Math.max(60, Math.min(334, crashY + 62))
 
   const weather = level?.theme.weather ?? 'none'
-  const envBg = level?.theme.bg ?? 'linear-gradient(180deg, #fbbf24 0%, #f59e0b 40%, #d97706 100%)'
-  const sceneryColor = level?.theme.sceneryColor ?? '#78716c'
   const busRotation = '180deg'
   const busShadow = '0 12px 20px rgba(15, 23, 42, 0.28)'
 
@@ -361,29 +360,13 @@ const GameScreen = () => {
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          {/* Road barriers */}
+          {/* Pixel-art scenery strips on both sides */}
+          <RoadScenery levelId={currentLevel} speed={speed} side="left" />
+          <RoadScenery levelId={currentLevel} speed={speed} side="right" />
+
+          {/* Road barriers (inside scenery edge) */}
           <div className="rf-road-barrier-left" />
           <div className="rf-road-barrier-right" />
-
-          {/* Environment background strip */}
-          <div
-            className="absolute left-0 right-0 top-0 h-16 opacity-60"
-            style={{ background: envBg }}
-          >
-            <div className="absolute bottom-0 left-0 right-0 h-8">
-              <svg className="h-full w-full" viewBox="0 0 400 32" preserveAspectRatio="none">
-                {level?.id === 5 ? (
-                  <path d="M0 0 Q200 32 400 0 L400 32 L0 32Z" fill={sceneryColor} opacity="0.6" />
-                ) : level?.id === 4 ? (
-                  <path d="M0 32 L40 10 L80 22 L130 4 L180 18 L220 8 L270 20 L320 6 L360 16 L400 12 L400 32Z" fill={sceneryColor} opacity="0.5" />
-                ) : level?.id === 6 ? (
-                  <path d="M0 28 Q50 14 100 22 Q150 10 200 18 Q250 8 300 16 Q350 12 400 20 L400 32 L0 32Z" fill={sceneryColor} opacity="0.5" />
-                ) : (
-                  <path d="M0 32 L0 18 L20 18 L20 10 L40 10 L40 20 L60 20 L60 6 L80 6 L80 14 L110 14 L110 22 L140 22 L140 8 L160 8 L160 18 L190 18 L190 12 L210 12 L210 24 L240 24 L240 4 L260 4 L260 16 L290 16 L290 10 L310 10 L310 20 L340 20 L340 14 L360 14 L360 26 L380 26 L380 8 L400 8 L400 32Z" fill={sceneryColor} opacity="0.4" />
-                )}
-              </svg>
-            </div>
-          </div>
 
           {/* Weather particles */}
           {weather !== 'none' && (
@@ -405,8 +388,8 @@ const GameScreen = () => {
           <div className="absolute inset-0 bg-[linear-gradient(to_bottom,_rgba(255,255,255,0.08),_transparent)]" />
           <div className="absolute inset-0 bg-[linear-gradient(to_right,_rgba(15,23,42,0.12)_0%,_transparent_22%,_transparent_78%,_rgba(15,23,42,0.12)_100%)]" />
 
-          {/* Lane dashes */}
-          <div className="absolute inset-0">
+          {/* Lane dashes — positioned within the road area between scenery strips */}
+          <div className="scenery-road-inset absolute inset-0">
             <div
               className="lane-dash-flow absolute left-[33.5%] top-0 h-full w-1.5 -translate-x-1/2 opacity-75"
               style={{
@@ -421,8 +404,8 @@ const GameScreen = () => {
                   'repeating-linear-gradient(to bottom, rgba(255,255,255,0.82) 0 16px, rgba(255,255,255,0) 16px 36px)',
               }}
             />
-            <div className="absolute left-4 top-0 h-full w-1 rounded-full bg-white/35" />
-            <div className="absolute right-4 top-0 h-full w-1 rounded-full bg-white/35" />
+            <div className="absolute left-2 top-0 h-full w-1 rounded-full bg-white/35" />
+            <div className="absolute right-2 top-0 h-full w-1 rounded-full bg-white/35" />
           </div>
 
           {/* Road progress bar overlay */}

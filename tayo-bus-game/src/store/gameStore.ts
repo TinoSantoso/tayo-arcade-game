@@ -68,6 +68,8 @@ type PersistedProgress = {
   bestEndlessDistance?: number
 }
 
+type SoundEvent = 'fuelPickup' | 'oilSlick' | 'wallHit' | 'spinout' | 'boostStart' | 'fuelWarning' | 'nearMiss'
+
 type GameStore = {
   gameState: GameState
   selectedCharacter: CharacterId
@@ -111,6 +113,7 @@ type GameStore = {
   unlockedAchievements: string[]
   newAchievement: string | null
   playfieldWidth: number
+  pendingSounds: SoundEvent[]
   setGameState: (state: GameState) => void
   setPlayfieldWidth: (width: number) => void
   selectCharacter: (id: CharacterId) => void
@@ -126,6 +129,7 @@ type GameStore = {
   resume: () => void
   dismissAchievement: () => void
   startEndless: () => void
+  consumeSounds: () => SoundEvent[]
   tick: (deltaMs: number) => void
 }
 
@@ -178,13 +182,37 @@ const STEER_SPEED = 40
 const SPEED_MULTIPLIER_BY_DIFFICULTY: Record<Difficulty, number> = {
   easy: 0.85,
   normal: 1,
-  hard: 1.12,
+  hard: 1.25,
 }
 
 const SPAWN_COOLDOWN_BY_DIFFICULTY: Record<Difficulty, number> = {
   easy: 2.6,
   normal: 1.7,
-  hard: 1.1,
+  hard: 0.8,
+}
+
+const FUEL_DRAIN_MULTIPLIER_BY_DIFFICULTY: Record<Difficulty, number> = {
+  easy: 0.8,
+  normal: 1,
+  hard: 1.5,
+}
+
+const FUEL_GAIN_MULTIPLIER_BY_DIFFICULTY: Record<Difficulty, number> = {
+  easy: 1.2,
+  normal: 1,
+  hard: 0.6,
+}
+
+const SWERVE_AGGRESSION_BY_DIFFICULTY: Record<Difficulty, number> = {
+  easy: 0.4,
+  normal: 0.7,
+  hard: 1.0,
+}
+
+const OBSTACLE_SPEED_MULTIPLIER_BY_DIFFICULTY: Record<Difficulty, number> = {
+  easy: 0.85,
+  normal: 1,
+  hard: 1.3,
 }
 
 const createRunStats = (overrides: Partial<RunStats> = {}): RunStats => ({
@@ -248,6 +276,10 @@ const getSpawnInterval = (frequency: ObstacleFrequency) => {
 const getDifficultyConfig = (difficulty: Difficulty) => ({
   speed: SPEED_MULTIPLIER_BY_DIFFICULTY[difficulty] ?? SPEED_MULTIPLIER_BY_DIFFICULTY.normal,
   spawn: SPAWN_COOLDOWN_BY_DIFFICULTY[difficulty] ?? SPAWN_COOLDOWN_BY_DIFFICULTY.normal,
+  fuelDrain: FUEL_DRAIN_MULTIPLIER_BY_DIFFICULTY[difficulty] ?? 1,
+  fuelGain: FUEL_GAIN_MULTIPLIER_BY_DIFFICULTY[difficulty] ?? 1,
+  swerveAggression: SWERVE_AGGRESSION_BY_DIFFICULTY[difficulty] ?? 0.7,
+  obstacleSpeed: OBSTACLE_SPEED_MULTIPLIER_BY_DIFFICULTY[difficulty] ?? 1,
 })
 
 const getSpawnCooldown = (frequency: ObstacleFrequency, difficulty: Difficulty) =>
@@ -385,6 +417,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   unlockedAchievements: initialAchievements,
   newAchievement: null,
   playfieldWidth: 400,
+  pendingSounds: [],
 
   setGameState: (state) => set({ gameState: state }),
   setPlayfieldWidth: (width) => set({ playfieldWidth: width }),
@@ -470,7 +503,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return { playerX: Math.min(WALL_MAX_X, state.playerX + STEER_SPEED * deltaSeconds) }
     }),
 
-  setBoost: (active) => set({ isBoosting: active }),
+  setBoost: (active) =>
+    set((state) => {
+      if (active && !state.isBoosting && state.gameState === 'playing') {
+        return { isBoosting: true, pendingSounds: [...state.pendingSounds, 'boostStart'] }
+      }
+      return { isBoosting: active }
+    }),
 
   pause: () =>
     set((state) => (state.gameState === 'playing' ? { gameState: 'paused' } : {})),
@@ -479,6 +518,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) => (state.gameState === 'paused' ? { gameState: 'playing' } : {})),
 
   dismissAchievement: () => set({ newAchievement: null }),
+
+  consumeSounds: () => {
+    const sounds = get().pendingSounds
+    if (sounds.length > 0) set({ pendingSounds: [] })
+    return sounds
+  },
 
   startEndless: () => {
     const diff = get().difficulty
@@ -558,7 +603,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       // Fuel depletion
       const fuelDrainRate = levelCfg?.fuelDrainRate ?? 0.8
-      const fuelDrain = fuelDrainRate * deltaSeconds * (state.isBoosting ? 2 : 1)
+      const fuelDrain = fuelDrainRate * deltaSeconds * (state.isBoosting ? 2 : 1) * config.fuelDrain
       let fuel = Math.max(0, state.fuel - fuelDrain)
 
       // Fuel empty = game over
@@ -578,6 +623,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           }),
         }
       }
+
+      const sounds: SoundEvent[] = []
 
       // Spinout timer
       let isSpinning = state.isSpinning
@@ -601,6 +648,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           spinTimer = SPIN_DURATION_OIL
           spinCount += 1
         }
+        sounds.push('wallHit')
       } else if (playerX > WALL_MAX_X) {
         playerX = WALL_MAX_X - 2
         fuel = Math.max(0, fuel - FUEL_LOSS_WALL)
@@ -609,6 +657,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           spinTimer = SPIN_DURATION_OIL
           spinCount += 1
         }
+        sounds.push('wallHit')
       }
 
       const distanceDelta = currentSpeed * deltaSeconds
@@ -622,7 +671,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const playerTop = PLAYER_Y + PLAYER_HEIGHT * PLAYER_HITBOX_TOP
       const playerBottom = PLAYER_Y + PLAYER_HEIGHT * PLAYER_HITBOX_BOTTOM
       const playerAvoidY = PLAYER_Y + PLAYER_HEIGHT * 0.9
-      const obstacleSpeed = distanceDelta * PIXELS_PER_METER
+      const obstacleSpeed = distanceDelta * PIXELS_PER_METER * config.obstacleSpeed
 
       // Score
       let score = state.score + distanceDelta * 10
@@ -641,7 +690,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           // Red car AI: set swerve target once when near player
           if (ob.variant === 'red_car' && !acted && ob.y > 80 && ob.y < 280) {
             const dx = playerX - ob.x
-            swerveTargetX = ob.x + Math.sign(dx) * Math.min(Math.abs(dx) * 0.7, 15)
+            const agg = config.swerveAggression
+            swerveTargetX = ob.x + Math.sign(dx) * Math.min(Math.abs(dx) * agg, 15 + agg * 10)
             swerveTargetX = Math.max(WALL_MIN_X, Math.min(WALL_MAX_X, swerveTargetX))
             acted = true
           }
@@ -649,7 +699,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           // Blue car AI: set swerve target once when entering danger zone
           if (ob.variant === 'blue_car' && !acted && ob.y > 40 && ob.y < 200) {
             const dx = playerX - ob.x
-            swerveTargetX = ob.x + Math.sign(dx) * Math.min(Math.abs(dx) * 0.65, 18)
+            const agg = config.swerveAggression
+            swerveTargetX = ob.x + Math.sign(dx) * Math.min(Math.abs(dx) * agg, 18 + agg * 12)
             swerveTargetX = Math.max(WALL_MIN_X, Math.min(WALL_MAX_X, swerveTargetX))
             acted = true
           }
@@ -697,9 +748,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
         if (xOverlap && yOverlap) {
           if (ob.variant === 'fuel_car') {
-            fuel = Math.min(state.maxFuel, fuel + FUEL_GAIN_PICKUP)
+            fuel = Math.min(state.maxFuel, fuel + FUEL_GAIN_PICKUP * config.fuelGain)
             score += 100
             obstacles = obstacles.filter((o) => o.id !== ob.id)
+            sounds.push('fuelPickup')
           } else if (ob.variant === 'oil_slick') {
             if (!isSpinning) {
               isSpinning = true
@@ -707,6 +759,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
               spinCount += 1
             }
             obstacles = obstacles.filter((o) => o.id !== ob.id)
+            sounds.push('oilSlick')
           } else if (ob.variant === 'truck') {
             gameOver = true
             crashY = ob.y
@@ -718,10 +771,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
               isSpinning = true
               spinTimer = SPIN_DURATION_COLLISION
               spinCount += 1
+              sounds.push('spinout')
             }
             obstacles = obstacles.filter((o) => o.id !== ob.id)
           }
         }
+      }
+
+      // Fuel warning
+      if (fuel > 0 && fuel <= 20 && state.fuel > 20) {
+        sounds.push('fuelWarning')
       }
 
       if (gameOver) {
@@ -740,6 +799,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           isSpinning,
           spinTimer,
           spinCount,
+          pendingSounds: sounds,
         }
       }
 
@@ -757,6 +817,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           isSpinning,
           spinTimer,
           spinCount,
+          pendingSounds: sounds,
           lastRunStats: createRunStats({
             timeElapsed: state.timeElapsed + deltaSeconds,
             obstaclesAvoided: state.obstaclesAvoided + newlyAvoided,
@@ -939,6 +1000,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // --- Endless mode speed ramp ---
       const nextSpeed = state.isEndless ? currentSpeed + ENDLESS_SPEED_RAMP * deltaSeconds : currentSpeed
 
+      // Near miss detection
+      if (newlyAvoided > 0) {
+        sounds.push('nearMiss')
+      }
+
       return {
         distanceTraveled,
         timeElapsed: state.timeElapsed + deltaSeconds,
@@ -961,6 +1027,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         roadCurveOffset,
         roadCurveTarget,
         curveChangeTimer,
+        pendingSounds: sounds,
       }
     }),
 }))
